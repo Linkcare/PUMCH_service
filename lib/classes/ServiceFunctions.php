@@ -460,11 +460,10 @@ class ServiceFunctions {
             }
 
             $referral = null;
-            /* Currently we don't know the PUMCH Id of the professional in PUMCH, so it is not possible to create an account for him in PHM */
-            // if ($episodeInfo->getSurgeonCode()) {
-            // $referral = $this->createProfessional($episodeInfo->getDoctorCode(), $episodeInfo->getDoctorName(), $GLOBALS['CASE_MANAGERS_TEAM'],
-            // APIRole::CASE_MANAGER);
-            // }
+            if ($episodeInfo->getSurgeonCode() && $GLOBALS['CASE_MANAGERS_TEAM']) {
+                $referral = $this->createProfessional($episodeInfo->getSurgeonCode(), $episodeInfo->getSurgeonName(), $GLOBALS['CASE_MANAGERS_TEAM'],
+                        APIRole::CASE_MANAGER);
+            }
 
             $episodeInfoForm = $this->updateEpisodeData($admission, $episodeInfo, $referral);
 
@@ -600,7 +599,7 @@ class ServiceFunctions {
 
     /**
      *
-     * @param APIUser $employeeRef
+     * @param string $employeeRef
      * @param string $name
      * @param string $roleId
      * @return APIUser
@@ -967,15 +966,60 @@ class ServiceFunctions {
             }
         }
 
+        // Assign the Task to the anesthesists
+        if ($GLOBALS['ANESTHESIA_TEAM']) {
+            $anesthesists = [];
+            $anesthesists[] = ['code' => $episodeInfo->getAnesthesiaDoctorCode(), 'name' => $episodeInfo->getAnesthesiaDoctorName()];
+            $anesthesists[] = ['code' => $episodeInfo->getAnesthesiaDoctorCode2(), 'name' => $episodeInfo->getAnesthesiaDoctorName2()];
+            $anesthesists[] = ['code' => $episodeInfo->getAnesthesiaDoctorCode3(), 'name' => $episodeInfo->getAnesthesiaDoctorName3()];
+            $anesthesists[] = ['code' => $episodeInfo->getAnesthesiaDoctorCode4(), 'name' => $episodeInfo->getAnesthesiaDoctorName4()];
+
+            $assignementsChanged = false;
+            $currentAssignments = $episodeTask->getAssignments();
+            $newAssignments = [];
+            foreach ($anesthesists as $doctorInfo) {
+                $code = $doctorInfo['code'];
+                $name = $doctorInfo['name'];
+                if (!$code) {
+                    continue;
+                }
+                if (!$name) {
+                    $name = $code;
+                }
+                $doctor = $this->createProfessional($code, $name, $GLOBALS['ANESTHESIA_TEAM'], APIRole::STAFF);
+                $alreadyAssigned = false;
+                foreach ($currentAssignments as $assignment) {
+                    if ($assignment->getUserId() == $doctor->getId() && ($assignment->getRoleId() == APIRole::STAFF)) {
+                        $alreadyAssigned = true;
+                        break;
+                    }
+                }
+                if (!$alreadyAssigned) {
+                    $assignementsChanged = true;
+                }
+                $newAssignments[] = new APITaskAssignment(APIRole::STAFF, $GLOBALS['ANESTHESIA_TEAM'], $doctor->getId());
+                // CURRENTLY THE LINKCARE PLATFORM DOES NOT ALLOW TO ASSIGN A TASK TO THE SAME ROLE TWICE, SO BY NOW WE ONLY ASSIGN THE TASK TO THE
+                // FIRST ANESTHESIST
+                break;
+            }
+
+            $assignementsChanged = $assignementsChanged || (count($newAssignments) != $episodeTask->getAssignments());
+
+            if ($assignementsChanged) {
+                $episodeTask->clearAssignments();
+                $episodeTask->addAssignments($newAssignments);
+            }
+        }
+
         if ($episodeInfo->getAdmissionTime()) {
             $dateParts = explode(' ', $episodeInfo->getAdmissionTime());
             $date = $dateParts[0];
             $time = $dateParts[1];
             $episodeTask->setDate($date);
             $episodeTask->setHour($time);
-            $episodeTask->setLocked(true);
         }
 
+        $episodeTask->setLocked(true);
         $episodeTask->save();
 
         return $episodeInfoForm;

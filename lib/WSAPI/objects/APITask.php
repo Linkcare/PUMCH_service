@@ -273,13 +273,19 @@ class APITask {
     /**
      * Adds a new assignment to a TASK
      *
-     * @param APITaskAssignment $assignment
+     * @param APITaskAssignment|APITaskAssignment[] $assignments
      */
-    public function addAssignments($assignment) {
-        if (!$assignment) {
+    public function addAssignments($assignments) {
+        if (!$assignments || empty($assignments)) {
             return;
         }
-        $this->assignments[] = $assignment;
+        if (!is_array($assignments)) {
+            $assignments = [$assignments];
+        }
+        foreach ($assignments as $a) {
+            $this->assignments[] = $a;
+        }
+
         $this->modified = true;
     }
 

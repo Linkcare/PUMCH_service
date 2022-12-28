@@ -31,7 +31,7 @@ $GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'] = 'PUMCH_ADMISSIONS';
  */
 $GLOBALS['DAY_SURGERY_PROGRAM_CODE'] = 'DSFU';
 /*
- * Day interval to reject ADMISSIONS that have status 'enrolled' in the "DISCHARGE FOLLOW UP" PROGRAM but discharged in the "PUMCH EPISODES"
+ * Day interval to reject ADMISSIONS that have status 'enrolled' in the "DAY SURGERY FOLLOW UP" PROGRAM but discharged in the "PUMCH EPISODES"
  * PROGRAM.
  * If the discharge ocurred before the configured period, the enrolled ADMISSION will be rejected
  */
@@ -44,13 +44,12 @@ $GLOBALS['TEAM_CODE'] = 'xxxxx';
  * The Case Manager is the doctor assigned to the episode
  * This doctors will be registered in the Linkcare platform and added as "Case Manager" members of the Team indicated in this configuration parameter
  */
-$GLOBALS['CASE_MANAGERS_TEAM'] = 'yyyyy';
+$GLOBALS['CASE_MANAGERS_TEAM'] = '';
 /*
- * Team where the PUMCH Surgeons will be added as members.
- * The Surgeon is the doctor assigned to an operation of the episode
- * This doctors will be registered in the Linkcare platform and added as "Case Manager" members of the Team indicated in this configuration parameter
+ * Team where the PUMCH anesthesists will be added as members.
+ * This anesthesists will be registered in the Linkcare platform and added as "Staff" members of the Team indicated in this configuration parameter
  */
-$GLOBALS['SURGEONS_TEAM'] = 'yyyyy';
+$GLOBALS['ANESTHESIA_TEAM'] = '';
 
 /*
  * Date of the oldest procedure that will be requested to the PUMCH API. This value normally is only used during

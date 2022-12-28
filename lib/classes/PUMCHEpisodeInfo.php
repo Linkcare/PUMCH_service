@@ -45,7 +45,11 @@ class PUMCHEpisodeInfo {
     /** @var string*/
     private $surgeonName;
     /** @var string*/
+    private $surgeonCode;
+    /** @var string*/
     private $surgeonName1;
+    /** @var string*/
+    private $surgeonCode1;
     /** @var string*/
     private $anesthesiaDoctorName;
     /** @var string*/
@@ -216,12 +220,30 @@ class PUMCHEpisodeInfo {
     }
 
     /**
+     * Code of the operating surgeon in PUMCH system
+     *
+     * @return string
+     */
+    public function getSurgeonCode() {
+        return $this->surgeonCode;
+    }
+
+    /**
      * Name of the operating surgeon assistant
      *
      * @return string
      */
     public function getSurgeonName1() {
         return $this->surgeonName1;
+    }
+
+    /**
+     * Code of the operating surgeon assistant in PUMCH system
+     *
+     * @return string
+     */
+    public function getSurgeonCode1() {
+        return $this->surgeonCode1;
     }
 
     /**
@@ -526,12 +548,30 @@ class PUMCHEpisodeInfo {
     }
 
     /**
+     * Code of the operating surgeon in PUMCH system
+     *
+     * @param string $value
+     */
+    public function setSurgeonCode($value) {
+        $this->assignAndTrackPropertyChange('surgeonCode', $value);
+    }
+
+    /**
      * Name of the operating surgeon assistant
      *
      * @param string $value
      */
     public function setSurgeonName1($value) {
         $this->assignAndTrackPropertyChange('surgeonName1', $value);
+    }
+
+    /**
+     * Code of the operating surgeon assistant in PUMCH system
+     *
+     * @param string $value
+     */
+    public function setSurgeonCode1($value) {
+        $this->assignAndTrackPropertyChange('surgeonCode1', $value);
     }
 
     /**
@@ -842,7 +882,10 @@ class PUMCHEpisodeInfo {
         $this->setDiagBeforeOperation($lastOperation->diagbeforeoperation);
         $this->setEmergencyIndicator($lastOperation->emergencyindicator);
         $this->setSurgeonName($lastOperation->surgeonname);
+        // $this->setSurgeonCode($lastOperation->surgeon); // Currently we are not receiving the surgeon code
         $this->setSurgeonName1($lastOperation->surgeonname1);
+        // $this->setSurgeonCode1($lastOperation->surgeon1); // Currently we are not receiving the surgeon code assistant
+
         $this->setAnesthesiaDoctorName($lastOperation->anesthesiadoctorname);
         $this->setAnesthesiaDoctorCode($lastOperation->anesthesiadoctor);
         $this->setAnesthesiaDoctorName2($lastOperation->anesthesiadoctorname2);
