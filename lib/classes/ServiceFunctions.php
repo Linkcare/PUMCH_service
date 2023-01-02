@@ -442,7 +442,8 @@ class ServiceFunctions {
             $errCode = ErrorCodes::UNEXPECTED_ERROR;
         }
         if ($errMsg) {
-            $errMsg = 'ERROR CREATING PATIENT ' . $episodeInfo->getName() . '(' . $episodeInfo->getPatientId() . '): ' . $errMsg;
+            $errMsg = 'ERROR CREATING PATIENT ' . $episodeInfo->getName() . '(operationId: ' . $episodeInfo->getOperationId() . ', patientId:' .
+                    $episodeInfo->getPatientId() . '): ' . $errMsg;
             throw new ServiceException($errCode, $errMsg);
         }
 
@@ -520,7 +521,8 @@ class ServiceFunctions {
             $errCode = ErrorCodes::UNEXPECTED_ERROR;
         }
         if ($errMsg) {
-            $errMsg = 'ERROR CREATING/UPDATING ADMISSION FOR PATIENT ' . $episodeInfo->getName() . ': ' . $errMsg;
+            $errMsg = 'ERROR CREATING/UPDATING ADMISSION FOR PATIENT ' . $episodeInfo->getName() . '(operationId: ' . $episodeInfo->getOperationId() .
+                    ', patientId:' . $episodeInfo->getPatientId() . '): ' . $errMsg;
             throw new ServiceException($errCode, $errMsg);
         }
     }
@@ -539,21 +541,18 @@ class ServiceFunctions {
     private function createPatient($importInfo, $subscription = null) {
         // Check if there already exists a patient with the PUMCH SickId
         $searchCondition = new StdClass();
-        if ($importInfo->getPatientId()) {
-            $searchCondition->identifier = new StdClass();
-            $searchCondition->identifier->code = $GLOBALS['PATIENT_IDENTIFIER'];
-            $searchCondition->identifier->value = $importInfo->getPatientId();
-            $searchCondition->identifier->team = $GLOBALS['HOSPITAL_TEAM'];
-        } else {
-            // Record without PatientId. Use the cardId (wristband identifier) to locate the patient
-            $searchCondition->identifier = new StdClass();
-            $searchCondition->identifier->code = $GLOBALS['WRISTBAND_IDENTIFIER'];
-            $searchCondition->identifier->value = $importInfo->getCardId();
-            $searchCondition->identifier->team = $GLOBALS['HOSPITAL_TEAM'];
+        if (!$importInfo->getPatientId()) {
+            throw new ServiceException(ErrorCodes::DATA_MISSING, 'patientId is not informed. It is mandatory to provide a patient Identifier.');
         }
+
+        $searchCondition->identifier = new StdClass();
+        $searchCondition->identifier->code = $GLOBALS['PATIENT_IDENTIFIER'];
+        $searchCondition->identifier->value = $importInfo->getPatientId();
+        $searchCondition->identifier->team = $GLOBALS['HOSPITAL_TEAM'];
         $found = $this->apiLK->case_search(json_encode($searchCondition));
+        $caseId = null;
         if (!empty($found)) {
-            $patientId = $found[0]->getId();
+            $caseId = $found[0]->getId();
         }
 
         $contactInfo = new APIContact();
@@ -564,6 +563,9 @@ class ServiceFunctions {
         if ($importInfo->getSex()) {
             $contactInfo->setGender($importInfo->getSex([$this, 'mapSexValue']));
         }
+        if ($importInfo->getBirthday()) {
+            $contactInfo->setBirthdate($importInfo->getBirthday());
+        }
 
         if ($importInfo->getPhone()) {
             $phone = new APIContactChannel();
@@ -572,21 +574,21 @@ class ServiceFunctions {
             $contactInfo->addPhone($phone);
         }
 
-        if ($importInfo->getCardId()) {
-            $wristbandId = new APIIdentifier($GLOBALS['WRISTBAND_IDENTIFIER'], $importInfo->getCardId());
-            $wristbandId->setTeamId($GLOBALS['HOSPITAL_TEAM']);
-            $contactInfo->addIdentifier($wristbandId);
-        }
-        if ($importInfo->getPatientId()) {
-            // Add the internal ID of the patient in PUMCH Hospital as an IDENTIFIER object in Linkcare platform
-            $sickId = new APIIdentifier($GLOBALS['PATIENT_IDENTIFIER'], $importInfo->getPatientId());
-            $sickId->setTeamId($GLOBALS['HOSPITAL_TEAM']);
-            $contactInfo->addIdentifier($sickId);
+        // Add the internal ID of the patient in PUMCH Hospital as an IDENTIFIER object in Linkcare platform
+        $uniqueIdentifier = new APIIdentifier($GLOBALS['PATIENT_IDENTIFIER'], $importInfo->getPatientId());
+        $uniqueIdentifier->setTeamId($GLOBALS['HOSPITAL_TEAM']);
+        $contactInfo->addIdentifier($uniqueIdentifier);
+
+        if ($importInfo->getIdCard() && ($identifierName = self::IdentifierNameFromCardType($importInfo->getIdCardType()))) {
+            $nationalId = new APIIdentifier($identifierName, $importInfo->getIdCard());
+            $contactInfo->addIdentifier($nationalId);
         }
 
-        if ($patientId) {
-            $this->apiLK->case_set_contact($patientId, $contactInfo);
-            $patient = $this->apiLK->case_get($patientId);
+        if ($caseId) {
+            $programId = $subscription ? $subscription->getProgram()->getId() : null;
+            $teamId = $subscription ? $subscription->getTeam()->getId() : null;
+            $this->apiLK->case_set_contact($caseId, $contactInfo, null, $programId, $teamId);
+            $patient = $this->apiLK->case_get($caseId);
         } else {
             $patient = $this->apiLK->case_insert($contactInfo, $subscription ? $subscription->getId() : null, true);
             $preferences = $patient->getPreferences();
@@ -921,11 +923,13 @@ class ServiceFunctions {
         $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::NAME, $episodeInfo->getName());
         $arrQuestions[] = $this->updateOptionQuestionValue($episodeInfoForm, PUMCHItemCodes::SEX, null, $episodeInfo->getSex([$this, 'mapSexValue']));
         $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::AGE, $episodeInfo->getAge());
+        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::BIRTHDAY, $episodeInfo->getBirthday());
+        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ID_CARD_TYPE, $episodeInfo->getIdCardType());
+        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ID_CARD, $episodeInfo->getIdCard());
+        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::PHONE, $episodeInfo->getPhone());
         $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::IN_ROOM_DATETIME, $episodeInfo->getInRoomDatetime());
         $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::OUT_ROOM_DATETIME, $episodeInfo->getoutRoomDatetime());
         $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::OPER_STATUS, $episodeInfo->getOperStatus());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::PHONE, $episodeInfo->getPhone());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ID_CARD, $episodeInfo->getCardId());
         $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::LAST_UPDATE, $episodeInfo->getUpdateTime());
 
         // Procedure information stored as a table (1 row)
@@ -1125,5 +1129,28 @@ class ServiceFunctions {
             $value = 2;
         }
         return $value;
+    }
+
+    static private function IdentifierNameFromCardType($cardType) {
+        switch ($cardType) {
+            case '01' : // Chinese ID
+                return 'NAT_ZH';
+            case '02' : // Chinese Military ID
+                return 'NAT_ZH_MIL';
+            case '03' : // Passport
+                return 'PASS';
+            case '04' : // Other
+                /* It is not a good idea to have an "OTHER" IDENTIFIER. it is not possible to guarantee whether it will have a unique value */
+                return 'OTHER';
+            case '05' : // Chinese Household ID
+                return 'NAT_ZH_HOUSEHOLD';
+            case '06' : // Alien Residence Permit
+                return 'NAT_ZH_FOREIGNERS';
+            case '07' : // Mainland Travel Permit for Hong Kong and Macao Residents
+                return 'NAT_ZH_HK_MACAO';
+            case '08' : // Mainland Travel Permit for Taiwan Residents
+                return 'NAT_ZH_TAIWAN';
+        }
+        return null;
     }
 }

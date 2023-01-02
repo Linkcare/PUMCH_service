@@ -197,7 +197,7 @@ class APICasePreferences {
      * @param string[] $value
      */
     public function setNotificationChannels($value) {
-        $this->userId = $value;
+        $this->notificationChannels = $value;
     }
 
     /**
@@ -255,7 +255,7 @@ class APICasePreferences {
 
         $notificationsNode = $xml->createChildNode($parentNode, 'notifications');
         if (isset($this->notificationChannels)) {
-            $channels = implode(',', trim($this->notifications->channels));
+            $channels = implode(',', trim($this->notificationChannels));
             $xml->createChildNode($notificationsNode, 'channels', $channels);
         }
         if (isset($this->notificationEventPriority)) {

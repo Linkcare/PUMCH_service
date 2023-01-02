@@ -146,9 +146,4 @@ date_default_timezone_set($GLOBALS['DEFAULT_TIMEZONE']);
 $GLOBALS['PATIENT_IDENTIFIER'] = 'PARTICIPANT_REF';
 $GLOBALS['PROFESSIONAL_IDENTIFIER'] = 'EMPLOYEE_REF';
 
-/*
- * Identifier assigned to a patient printed in the wristband. Note that the patient identifier can be null, but the wristband identifier always exists
- */
-$GLOBALS['WRISTBAND_IDENTIFIER'] = 'WRISTBAND_REF';
-
 $GLOBALS['VERSION'] = '1.0';

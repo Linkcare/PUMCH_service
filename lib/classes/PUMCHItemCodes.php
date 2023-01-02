@@ -3,6 +3,7 @@
 class PUMCHItemCodes {
     const LAST_IMPORT = 'LAST_IMPORT';
     const PATIENT_ID = 'PATIENT_ID';
+    const INPATIENT_ID = 'INPATIENT_ID';
     const EPISODE_ID = 'EPISODE_ID';
     const OPERATION_ID = 'OPERATION_ID';
     const DEPT_STAYED = 'DEPARTMENT_CODE';
@@ -29,11 +30,13 @@ class PUMCHItemCodes {
     const NAME = 'PAT_NAME';
     const SEX = 'PAT_GENDER';
     const AGE = 'AGE';
+    const BIRTHDAY = 'BIRTHDAY';
+    const ID_CARD_TYPE = 'CARD_ID_TYPE';
+    const ID_CARD = 'CARD_ID';
     const IN_ROOM_DATETIME = 'INROOM_TIME';
     const OUT_ROOM_DATETIME = 'OUTROOM_TIME';
     const OPER_STATUS = 'OP_STATUS';
     const PHONE = 'PHONE';
-    const ID_CARD = 'CARD_ID';
     const LAST_UPDATE = 'LAST_UPDATE_TIME';
 
     //

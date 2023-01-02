@@ -77,6 +77,12 @@ class PUMCHEpisodeInfo {
     /** @var string*/
     private $age;
     /** @var string*/
+    private $birthday;
+    /** @var string*/
+    private $idCardType;
+    /** @var string*/
+    private $idCard;
+    /** @var string*/
     private $inRoomDatetime;
     /** @var string*/
     private $outRoomDatetime;
@@ -86,7 +92,7 @@ class PUMCHEpisodeInfo {
     /** @var string*/
     private $phone;
     /** @var string*/
-    private $cardId;
+    private $inpatientId;
     /** @var string*/
     private $updateTime;
 
@@ -370,6 +376,30 @@ class PUMCHEpisodeInfo {
      *
      * @return string
      */
+    public function getBirthday() {
+        return $this->birthday;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getIdCardType() {
+        return $this->idCardType;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getIdCard() {
+        return $this->idCard;
+    }
+
+    /**
+     *
+     * @return string
+     */
     public function getInRoomDatetime() {
         return $this->inRoomDatetime;
     }
@@ -413,8 +443,8 @@ class PUMCHEpisodeInfo {
      *
      * @return string
      */
-    public function getCardId() {
-        return $this->cardId;
+    public function getInpatientId() {
+        return $this->inpatientId;
     }
 
     /**
@@ -687,6 +717,30 @@ class PUMCHEpisodeInfo {
      *
      * @param string $value
      */
+    public function setBirthday($value) {
+        $this->assignAndTrackPropertyChange('birthday', $value);
+    }
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setIdCardType($value) {
+        $this->assignAndTrackPropertyChange('idCardType', $value);
+    }
+
+    /**
+     *
+     * @param string $value
+     */
+    public function setIdCard($value) {
+        $this->assignAndTrackPropertyChange('idCard', $value);
+    }
+
+    /**
+     *
+     * @param string $value
+     */
     public function setInRoomDatetime($value) {
         $this->assignAndTrackPropertyChange('inRoomDatetime', $value);
     }
@@ -727,8 +781,8 @@ class PUMCHEpisodeInfo {
      *
      * @param string $value
      */
-    public function setCardId($value) {
-        $this->assignAndTrackPropertyChange('cardId', $value);
+    public function setInpatientId($value) {
+        $this->assignAndTrackPropertyChange('inpatientId', $value);
     }
 
     /**
@@ -862,15 +916,15 @@ class PUMCHEpisodeInfo {
 
         $this->originalObject = $lastOperation;
 
-        if (isNullOrEmpty($lastOperation->patientId)) {
+        if (isNullOrEmpty($lastOperation->patientID)) {
             throw new ServiceException(ErrorCodes::DATA_MISSING, 'Operation ' . $lastOperation->scheduled . ' arrived without Patient ID');
         }
         if (isNullOrEmpty($lastOperation->inRoomDatetime)) {
             throw new ServiceException(ErrorCodes::DATA_MISSING, 'Operation ' . $lastOperation->scheduled . ' arrived without inRoomDatetime');
         }
 
-        $this->setPatientId($lastOperation->patientId);
-        $this->setCardId($lastOperation->cardId);
+        $this->setPatientId($lastOperation->patientID);
+        $this->setInpatientId($lastOperation->inpatientID);
         $this->setEpisodeId($lastOperation->scheduled);
         $this->setOperationId($lastOperation->scheduled);
         $this->setDeptStayed($lastOperation->deptstayed);
@@ -899,11 +953,14 @@ class PUMCHEpisodeInfo {
         $this->setName($lastOperation->name);
         $this->setSex($lastOperation->sex);
         $this->setAge($lastOperation->age);
+        $this->setBirthday($lastOperation->birthday);
+        $this->setIdCardType($lastOperation->idType);
+        $this->setIdCard($lastOperation->idCard);
         $this->setInRoomDatetime($lastOperation->inRoomDatetime);
         $this->setoutRoomDatetime($lastOperation->outRoomDatetime);
         $this->setOperStatus($lastOperation->operStatus);
         $this->setPhone($lastOperation->phone);
-        $this->setUpdateTime($lastOperation->update_time ?? $lastOperation->operatingdatetime);
+        $this->setUpdateTime($lastOperation->updateTime ?? $lastOperation->operatingdatetime);
 
         // Now create the list of procedures of this episode
         foreach ($episodeProcedures as $operation) {

@@ -194,7 +194,7 @@ class PUMCHAPI {
           "result": [
             {
               "scheduled": "789364",
-              "patientId": "simpt3151452",
+              "inpatientID": "inpt3151452",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "20",
@@ -221,12 +221,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 10:05:00",
               "outRoomDatetime": "2022-12-27 11:00:00",
               "operStatus": "S",
-              "cardId": "simwb47948243",
+              "patientID": "simpt47948243",
               "phone": null
             },
             {
               "scheduled": "789283",
-              "patientId": "simpt3127586",
+              "inpatientID": "inpt3127586",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "19",
@@ -253,12 +253,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 08:16:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb43101050",
+              "patientID": "simpt43101050",
               "phone": null
             },
             {
               "scheduled": "789283",
-              "patientId": "simpt3127586",
+              "inpatientID": "inpt3127586",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "19",
@@ -285,12 +285,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 08:16:00",
               "outRoomDatetime": "2022-12-27 09:10:00",
               "operStatus": "S",
-              "cardId": "simwb43101050",
+              "patientID": "simpt43101050",
               "phone": null
             },
             {
               "scheduled": "789282",
-              "patientId": "simpt2480108",
+              "inpatientID": "inpt2480108",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "21",
@@ -317,12 +317,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 12:56:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb48455678",
+              "patientID": "simpt48455678",
               "phone": null
             },
             {
               "scheduled": "789282",
-              "patientId": "simpt2480108",
+              "inpatientID": "inpt2480108",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "21",
@@ -349,12 +349,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 12:56:00",
               "outRoomDatetime": "2022-12-27 13:50:00",
               "operStatus": "S",
-              "cardId": "simwb48455678",
+              "patientID": "simpt48455678",
               "phone": null
             },
             {
               "scheduled": "789281",
-              "patientId": "simpt5157706",
+              "inpatientID": "inpt5157706",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "18",
@@ -381,12 +381,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 11:20:00",
               "outRoomDatetime": "2022-12-27 12:00:00",
               "operStatus": "S",
-              "cardId": "simwb43338681",
+              "patientID": "simpt43338681",
               "phone": null
             },
             {
               "scheduled": "789362",
-              "patientId": "simpt3151625",
+              "inpatientID": "inpt3151625",
               "deptstayed": "日间整形美容外科(西院)",
               "department": "日间病房西院",
               "bedNo": "28",
@@ -413,12 +413,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 10:23:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb48572641",
+              "patientID": "simpt48572641",
               "phone": null
             },
             {
               "scheduled": "789362",
-              "patientId": "simpt3151625",
+              "inpatientID": "inpt3151625",
               "deptstayed": "日间整形美容外科(西院)",
               "department": "日间病房西院",
               "bedNo": "28",
@@ -445,12 +445,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 10:23:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb48572641",
+              "patientID": "simpt48572641",
               "phone": null
             },
             {
               "scheduled": "789362",
-              "patientId": "simpt3151625",
+              "inpatientID": "inpt3151625",
               "deptstayed": "日间整形美容外科(西院)",
               "department": "日间病房西院",
               "bedNo": "28",
@@ -477,12 +477,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 10:23:00",
               "outRoomDatetime": "2022-12-27 12:30:00",
               "operStatus": "S",
-              "cardId": "simwb48572641",
+              "patientID": "simpt48572641",
               "phone": null
             },
             {
               "scheduled": "789280",
-              "patientId": "simpt5157174",
+              "inpatientID": "inpt5157174",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "16",
@@ -509,12 +509,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 12:04:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb46980310",
+              "patientID": "simpt46980310",
               "phone": null
             },
             {
               "scheduled": "789280",
-              "patientId": "simpt5157174",
+              "inpatientID": "inpt5157174",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "16",
@@ -541,12 +541,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 12:04:00",
               "outRoomDatetime": "2022-12-27 12:55:00",
               "operStatus": "S",
-              "cardId": "simwb46980310",
+              "patientID": "simpt46980310",
               "phone": null
             },
             {
               "scheduled": "789012",
-              "patientId": "simpt3151547",
+              "inpatientID": "inpt3151547",
               "deptstayed": "日间妇科内分泌中心(西院)",
               "department": "日间病房西院",
               "bedNo": "24",
@@ -573,12 +573,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 09:36:00",
               "outRoomDatetime": "2022-12-27 10:45:00",
               "operStatus": "S",
-              "cardId": "simwb45333347",
+              "patientID": "simpt45333347",
               "phone": null
             },
             {
               "scheduled": "789011",
-              "patientId": "simpt2435303",
+              "inpatientID": "inpt2435303",
               "deptstayed": "",
               "department": "日间病房西院",
               "bedNo": "",
@@ -605,12 +605,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 08:25:00",
               "outRoomDatetime": "2022-12-27 09:30:00",
               "operStatus": "C",
-              "cardId": "simwb17991586",
+              "patientID": "simpt17991586",
               "phone": null
             },
             {
               "scheduled": "789366",
-              "patientId": "simpt3152152",
+              "inpatientID": "inpt3152152",
               "deptstayed": "日间整形美容外科(西院)",
               "department": "日间病房西院",
               "bedNo": "57",
@@ -637,12 +637,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 08:14:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb46845720",
+              "patientID": "simpt46845720",
               "phone": null
             },
             {
               "scheduled": "789366",
-              "patientId": "simpt3152152",
+              "inpatientID": "inpt3152152",
               "deptstayed": "日间整形美容外科(西院)",
               "department": "日间病房西院",
               "bedNo": "57",
@@ -669,12 +669,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 08:14:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb46845720",
+              "patientID": "simpt46845720",
               "phone": null
             },
             {
               "scheduled": "789366",
-              "patientId": "simpt3152152",
+              "inpatientID": "inpt3152152",
               "deptstayed": "日间整形美容外科(西院)",
               "department": "日间病房西院",
               "bedNo": "57",
@@ -701,12 +701,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 08:14:00",
               "outRoomDatetime": "2022-12-27 10:15:00",
               "operStatus": "S",
-              "cardId": "simwb46845720",
+              "patientID": "simpt46845720",
               "phone": null
             },
             {
               "scheduled": "789366",
-              "patientId": "simpt3152152",
+              "inpatientID": "inpt3152152",
               "deptstayed": "日间整形美容外科(西院)",
               "department": "日间病房西院",
               "bedNo": "57",
@@ -733,12 +733,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 08:14:00",
               "outRoomDatetime": "2022-12-27 10:15:00",
               "operStatus": "S",
-              "cardId": "simwb46845720",
+              "patientID": "simpt46845720",
               "phone": null
             },
             {
               "scheduled": "789279",
-              "patientId": "simpt2141016",
+              "inpatientID": "inpt2141016",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "17",
@@ -765,12 +765,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 09:15:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb18867567",
+              "patientID": "simpt18867567",
               "phone": null
             },
             {
               "scheduled": "789279",
-              "patientId": "simpt2141016",
+              "inpatientID": "inpt2141016",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "17",
@@ -797,12 +797,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 09:15:00",
               "outRoomDatetime": "2022-12-27 09:55:00",
               "operStatus": "S",
-              "cardId": "simwb18867567",
+              "patientID": "simpt18867567",
               "phone": null
             },
             {
               "scheduled": "789019",
-              "patientId": "simptC797251",
+              "inpatientID": "inptC797251",
               "deptstayed": "日间妇科内分泌中心(西院)",
               "department": "日间病房西院",
               "bedNo": "26",
@@ -829,12 +829,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 10:43:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb40174454",
+              "patientID": "simpt40174454",
               "phone": null
             },
             {
               "scheduled": "789019",
-              "patientId": "simptC797251",
+              "inpatientID": "inptC797251",
               "deptstayed": "日间妇科内分泌中心(西院)",
               "department": "日间病房西院",
               "bedNo": "26",
@@ -861,12 +861,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 10:43:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb40174454",
+              "patientID": "simpt40174454",
               "phone": null
             },
             {
               "scheduled": "789019",
-              "patientId": "simptC797251",
+              "inpatientID": "inptC797251",
               "deptstayed": "日间妇科内分泌中心(西院)",
               "department": "日间病房西院",
               "bedNo": "26",
@@ -893,12 +893,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-27 10:43:00",
               "outRoomDatetime": "2022-12-27 11:40:00",
               "operStatus": "S",
-              "cardId": "simwb40174454",
+              "patientID": "simpt40174454",
               "phone": null
             },
             {
               "scheduled": "788994",
-              "patientId": "simpt3150434",
+              "inpatientID": "inpt3150434",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "09",
@@ -925,12 +925,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-26 12:26:00",
               "outRoomDatetime": "2022-12-26 13:15:00",
               "operStatus": "S",
-              "cardId": "simwb48526239",
+              "patientID": "simpt48526239",
               "phone": null
             },
             {
               "scheduled": "789199",
-              "patientId": "simpt3152136",
+              "inpatientID": "inpt3152136",
               "deptstayed": "日间血管外科(西院)",
               "department": "日间病房西院",
               "bedNo": "29",
@@ -957,12 +957,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-26 13:40:00",
               "outRoomDatetime": "2022-12-26 15:45:00",
               "operStatus": "S",
-              "cardId": "simwb42985016",
+              "patientID": "simpt42985016",
               "phone": null
             },
             {
               "scheduled": "789155",
-              "patientId": "simpt3151243",
+              "inpatientID": "inpt3151243",
               "deptstayed": "日间骨科(西院)",
               "department": "日间病房西院",
               "bedNo": "61",
@@ -989,12 +989,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-26 10:20:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb48571892",
+              "patientID": "simpt48571892",
               "phone": null
             },
             {
               "scheduled": "789155",
-              "patientId": "simpt3151243",
+              "inpatientID": "inpt3151243",
               "deptstayed": "日间骨科(西院)",
               "department": "日间病房西院",
               "bedNo": "61",
@@ -1021,12 +1021,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-26 10:20:00",
               "outRoomDatetime": "2022-12-26 12:55:00",
               "operStatus": "S",
-              "cardId": "simwb48571892",
+              "patientID": "simpt48571892",
               "phone": null
             },
             {
               "scheduled": "788989",
-              "patientId": "simpt2480125",
+              "inpatientID": "inpt2480125",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "10",
@@ -1053,12 +1053,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-26 11:47:00",
               "outRoomDatetime": "2022-12-26 12:20:00",
               "operStatus": "S",
-              "cardId": "simwb40720660",
+              "patientID": "simpt40720660",
               "phone": null
             },
             {
               "scheduled": "789047",
-              "patientId": "simpt5164738",
+              "inpatientID": "inpt5164738",
               "deptstayed": "日间骨科(西院)",
               "department": "日间病房西院",
               "bedNo": "58",
@@ -1085,12 +1085,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-26 08:28:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb48524179",
+              "patientID": "simpt48524179",
               "phone": null
             },
             {
               "scheduled": "789047",
-              "patientId": "simpt5164738",
+              "inpatientID": "inpt5164738",
               "deptstayed": "日间骨科(西院)",
               "department": "日间病房西院",
               "bedNo": "58",
@@ -1117,12 +1117,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-26 08:28:00",
               "outRoomDatetime": "2022-12-26 10:15:00",
               "operStatus": "S",
-              "cardId": "simwb48524179",
+              "patientID": "simpt48524179",
               "phone": null
             },
             {
               "scheduled": "788982",
-              "patientId": "simpt5164775",
+              "inpatientID": "inpt5164775",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "07",
@@ -1149,12 +1149,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-26 08:19:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb17946686",
+              "patientID": "simpt17946686",
               "phone": null
             },
             {
               "scheduled": "788982",
-              "patientId": "simpt5164775",
+              "inpatientID": "inpt5164775",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "07",
@@ -1181,12 +1181,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-26 08:19:00",
               "outRoomDatetime": "2022-12-26 09:10:00",
               "operStatus": "S",
-              "cardId": "simwb17946686",
+              "patientID": "simpt17946686",
               "phone": null
             },
             {
               "scheduled": "788996",
-              "patientId": "simpt5163473",
+              "inpatientID": "inpt5163473",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "11",
@@ -1213,12 +1213,12 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-26 09:20:00",
               "outRoomDatetime": null,
               "operStatus": "S",
-              "cardId": "simwb48572359",
+              "patientID": "simpt48572359",
               "phone": null
             },
             {
               "scheduled": "788996",
-              "patientId": "simpt5163473",
+              "inpatientID": "inpt5163473",
               "deptstayed": "日间医疗中心妇产科学系(西院)(普通)",
               "department": "日间病房西院",
               "bedNo": "11",
@@ -1245,7 +1245,7 @@ class PUMCHAPI {
               "inRoomDatetime": "2022-12-26 09:20:00",
               "outRoomDatetime": "2022-12-26 10:25:00",
               "operStatus": "S",
-              "cardId": "simwb48572359",
+              "patientID": "simpt48572359",
               "phone": null
             }
           ]

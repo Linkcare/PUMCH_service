@@ -762,14 +762,16 @@ class LinkcareSoapAPI {
      * @param string $caseId
      * @param APIContact $contact
      * @param string $admissionId
+     * @param string $programId
+     * @param string $teamId
      * @throws APIException
      */
-    public function case_set_contact($caseId, $contact, $admissionId = null) {
+    public function case_set_contact($caseId, $contact, $admissionId = null, $programId = null, $teamId = null) {
         $xml = new XMLHelper('contact');
 
         $contact->setId($caseId);
         $contact->toXML($xml, $xml->rootNode);
-        $params = ['case' => $xml->toString(), 'admission' => $admissionId];
+        $params = ['case' => $xml->toString(), 'admission' => $admissionId, 'program' => $programId, 'team' => $teamId];
         $this->invoke('case_set_contact', $params);
     }
 
