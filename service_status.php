@@ -18,8 +18,8 @@ try {
     exit(1);
 }
 
-$serviceNames = ['import_patients' => 'Import episodes in PHM', 'fetch_kangxin_records' => 'Fetch operations from Kangxin',
-        'review_followup_enrolled' => 'Reject expired enrollments in DISCHARGE FOLLOWUP'];
+$serviceNames = ['import_patients' => 'Import operations in PHM', 'fetch_pumch_records' => 'Fetch operations from PUMCH',
+        'review_followup_enrolled' => 'Reject expired enrollments in DAY SURGERY FOLLOWUP'];
 
 $status = [];
 foreach ($serviceNames as $name => $description) {
