@@ -953,7 +953,7 @@ class PUMCHEpisodeInfo {
         $this->setName($lastOperation->name);
         $this->setSex($lastOperation->sex);
         $this->setAge($lastOperation->age);
-        $this->setBirthday($lastOperation->birthday);
+        $this->setBirthday($lastOperation->birthDay);
         $this->setIdCardType($lastOperation->idType);
         $this->setIdCard($lastOperation->idCard);
         $this->setInRoomDatetime($lastOperation->inRoomDatetime);
