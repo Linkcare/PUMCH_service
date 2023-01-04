@@ -890,6 +890,7 @@ class ServiceFunctions {
         $arrQuestions = [];
         $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::LAST_IMPORT, currentDate());
         $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::PATIENT_ID, $episodeInfo->getPatientId());
+        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::INPATIENT_ID, $episodeInfo->getInpatientId());
         $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::EPISODE_ID, $episodeInfo->getEpisodeId());
         $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::OPERATION_ID, $episodeInfo->getOperationId());
         $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::DEPT_STAYED, $episodeInfo->getDeptStayed());
@@ -1133,23 +1134,25 @@ class ServiceFunctions {
 
     static private function IdentifierNameFromCardType($cardType) {
         switch ($cardType) {
-            case '01' : // Chinese ID
+            case '5000' : // Chinese ID
                 return 'NAT_ZH';
-            case '02' : // Chinese Military ID
-                return 'NAT_ZH_MIL';
-            case '03' : // Passport
+            case '5001' : // Chinese Household ID
+                return 'NAT_ZH_HOUSEHOLD';
+            case '5002' : // Passport
                 return 'PASS';
-            case '04' : // Other
+            case '5003' : // Chinese Military ID
+                return 'NAT_ZH_MIL';
+            case '5004' :
+                return 'DRIV_ZH'; // Driver license
+            case '5005' : // Mainland Travel Permit for Hong Kong and Macao Residents
+                return 'NAT_ZH_HK_MACAO';
+            case '5006' : // Mainland Travel Permit for Taiwan Residents
+                return 'NAT_ZH_TAIWAN';
+            case '5007' : // Other
                 /* It is not a good idea to have an "OTHER" IDENTIFIER. it is not possible to guarantee whether it will have a unique value */
                 return 'OTHER';
-            case '05' : // Chinese Household ID
-                return 'NAT_ZH_HOUSEHOLD';
-            case '06' : // Alien Residence Permit
+            case '5008' : // Alien Residence Permit
                 return 'NAT_ZH_FOREIGNERS';
-            case '07' : // Mainland Travel Permit for Hong Kong and Macao Residents
-                return 'NAT_ZH_HK_MACAO';
-            case '08' : // Mainland Travel Permit for Taiwan Residents
-                return 'NAT_ZH_TAIWAN';
         }
         return null;
     }
