@@ -289,6 +289,26 @@ class LinkcareSoapAPI {
     }
 
     /**
+     *
+     * @param APITeam $team
+     * @return string
+     * @throws APIException
+     */
+    function team_insert($team) {
+        $xml = new XMLHelper('team');
+        $rootNode = $xml->rootNode;
+        $dataNode = $xml->createChildNode($rootNode, 'data');
+        $team->toXML($xml, $dataNode);
+        $params = ['team' => $xml->toString()];
+        $resp = $this->invoke('team_insert', $params);
+        if (!$resp->getErrorCode()) {
+            $teamId = $resp->getResult();
+        }
+
+        return $teamId;
+    }
+
+    /**
      * Get information about a TEAM
      *
      * @param string $teamId
@@ -306,6 +326,20 @@ class LinkcareSoapAPI {
         }
 
         return $team;
+    }
+
+    /**
+     *
+     * @param APITeam $team
+     * @throws APIException
+     */
+    function team_set($team) {
+        $xml = new XMLHelper('team');
+        $rootNode = $xml->rootNode;
+        $dataNode = $xml->createChildNode($rootNode, 'data');
+        $team->toXML($xml, $dataNode);
+        $params = ['team' => $xml->toString()];
+        $this->invoke('team_set', $params);
     }
 
     /**
@@ -359,14 +393,35 @@ class LinkcareSoapAPI {
     /**
      *
      * @param string $programId
+     * @param string $version
+     * @param string $teamId
+     * @throws APIException
+     * @return APISubscription
+     */
+    public function subscription_insert($programId, $version = null, $teamId = null) {
+        $subscription = null;
+        $params = ['program' => $programId, 'version' => $version, 'team' => $teamId];
+        $resp = $this->invoke('subscription_insert', $params);
+        if (!$resp->getErrorCode()) {
+            if ($result = simplexml_load_string($resp->getResult())) {
+                $subscription = APISubscription::parseXML($result);
+            }
+        }
+
+        return $subscription;
+    }
+
+    /**
+     *
+     * @param string $programId
      * @param string $teamId
      * @param string $subscriptionId
      * @throws APIException
      * @return APISubscription
      */
-    public function subscription_get($program = null, $team = null, $subscriptionId = null) {
+    public function subscription_get($programId = null, $teamId = null, $subscriptionId = null) {
         $subscription = null;
-        $params = ["program" => $program, 'team' => $team, 'subscription' => $subscriptionId];
+        $params = ['program' => $programId, 'team' => $teamId, 'subscription' => $subscriptionId];
         $resp = $this->invoke("subscription_get", $params);
         if (!$resp->getErrorCode()) {
             if ($result = simplexml_load_string($resp->getResult())) {
