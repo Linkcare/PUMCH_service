@@ -574,6 +574,8 @@ class ServiceFunctions {
         }
         if ($importInfo->getBirthday()) {
             $contactInfo->setBirthdate($importInfo->getBirthday());
+        } elseif ($importInfo->getAge()) {
+            $contactInfo->setAge($importInfo->getAge([$this, 'mapAgeValue']));
         }
 
         if ($importInfo->getPhone()) {
@@ -1124,6 +1126,25 @@ class ServiceFunctions {
             $q->setOptionAnswer($ids, $values);
         }
         return $q;
+    }
+
+    /**
+     * Maps a Age value to a numeric value in years
+     *
+     * @param string $value
+     * @return number
+     */
+    public function mapAgeValue($value) {
+        $matches = null;
+        if (is_numeric($value)) {
+            return $value;
+        }
+
+        if (preg_match('/^(\d+)岁$/', $value, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
     }
 
     /**
