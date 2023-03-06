@@ -14,8 +14,7 @@ class ServiceFunctions {
 
     /* Other Constants */
     const PATIENT_HISTORY_TASK_CODE = 'PUMCH_IMPORT';
-    const EPISODE_FORM_CODE = 'PUMCH_IMPORT_FORM';
-    const EPISODE_CHANGE_EVENT_CODE = 'EVENT_EPISODE_UPDATE';
+    const OPERATION_FORM_CODE = 'PUMCH_IMPORT_FORM';
 
     /**
      *
@@ -36,8 +35,6 @@ class ServiceFunctions {
      */
     public function fetchPUMCHRecords($processHistory) {
         $serviceResponse = new ServiceResponse(ServiceResponse::IDLE, 'Process started');
-        /* Time between requests to the KNGXIN API to avoid blocking the server */
-        $this->apiPUMCH->setDelay($GLOBALS['PUMCH_REQUEST_DELAY']);
 
         $processed = 0;
         $importFailed = 0;
@@ -73,9 +70,9 @@ class ServiceFunctions {
             $patientsToImport = array_slice($operationsFetched, ($page - 1) * $pageSize, $pageSize);
 
             foreach ($patientsToImport as $patientInfo) {
-                /** @var PUMCHEpisodeInfo $patientInfo */
+                /** @var PUMCHOperationInfo $patientInfo */
                 ServiceLogger::getInstance()->debug(
-                        'Processing patient ' . sprintf('%03d', $processed) . ': ' . $patientInfo->getName() . ' (SickId: ' .
+                        'Processing patient ' . sprintf('%03d', $processed) . ': ' . $patientInfo->getName() . ' (Patient Id: ' .
                         $patientInfo->getPatientId() . ', Episode: ' . $patientInfo->getEpisodeId() . ')', 1);
                 try {
                     $ret = $this->processFetchedRecord($patientInfo);
@@ -130,23 +127,23 @@ class ServiceFunctions {
         // Verify the existence of the required SUBSCRIPTIONS
         try {
             // Locate the SUBSCRIPTION for storing episode information
-            $kxEpisodesSubscription = $this->apiLK->subscription_get($GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'], $GLOBALS['TEAM_CODE']);
+            $kxEpisodesSubscription = $this->apiLK->subscription_get($GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'], $GLOBALS['PUMCH_EPISODES_TEAM_CODE']);
         } catch (Exception $e) {
             $serviceResponse->setCode(ServiceResponse::ERROR);
             $serviceResponse->setMessage(
-                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['TEAM_CODE'] .
-                    ') FOR IMPORTING PATIENTS: ' . $e->getMessage());
+                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'] . ', Team: ' .
+                    $GLOBALS['PUMCH_EPISODES_TEAM_CODE'] . ') FOR IMPORTING PATIENTS: ' . $e->getMessage());
             $processHistory->addLog($serviceResponse->getMessage());
             return $serviceResponse;
         }
 
         try {
             // Locate the SUBSCRIPTION of the "Day Surgery" PROGRAM for creating new ADMISSIONS of a patient
-            $daySurgerySubscription = $this->apiLK->subscription_get($GLOBALS['DAY_SURGERY_PROGRAM_CODE'], $GLOBALS['TEAM_CODE']);
+            $daySurgerySubscription = $this->apiLK->subscription_get($GLOBALS['DAY_SURGERY_PROGRAM_CODE'], $GLOBALS['DAY_SURGERY_TEAM_CODE']);
         } catch (Exception $e) {
             $serviceResponse->setCode(ServiceResponse::ERROR);
             $serviceResponse->setMessage(
-                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['DAY_SURGERY_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['TEAM_CODE'] .
+                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['DAY_SURGERY_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['DAY_SURGERY_TEAM_CODE'] .
                     ') FOR DAY SURGERY PATIENTS: ' . $e->getMessage());
             $processHistory->addLog($serviceResponse->getMessage());
             return $serviceResponse;
@@ -183,11 +180,11 @@ class ServiceFunctions {
                 // We have reached the last page, because we received less episodes than the requested
                 $MaxEpisodes = $processed + count($changedEpisodes);
             }
-            foreach ($changedEpisodes as $episodeOperations) {
-                /** @var RecordPool[] $episodeOperations */
+            foreach ($changedEpisodes as $episodeOperationRecords) {
+                /** @var RecordPool[] $episodeOperationRecords */
                 /*
                  * The information received from each clinical episode consists on several records, where each record contains the
-                 * information about one intervention.
+                 * information about one operation.
                  * First of all we will create a single Patient object with all the operations of the episode.
                  * Additionally, whenever we receive updated information about the episode, we want to track the changes received so that we can
                  * inform the Case Manager about wich things have changed. For that reason, we have a copy of the last information loaded in the PHM
@@ -197,49 +194,49 @@ class ServiceFunctions {
                         array_map(function ($op) {
                             /** @var RecordPool $op */
                             return $op->getPrevRecordContent();
-                        }, $episodeOperations));
+                        }, $episodeOperationRecords));
 
-                $patientInfo = null;
+                $episodeInfo = null;
 
                 $PUMCHData = array_map(function ($x) {
                     /** @var RecordPool $x */
                     return $x->getRecordContent();
-                }, $episodeOperations);
+                }, $episodeOperationRecords);
 
                 if (!empty($prevPUMCHData)) {
                     // This clinical episode was been processed before, so first we load the previous information
-                    $patientInfo = PUMCHEpisodeInfo::fromJson($prevPUMCHData);
+                    $episodeInfo = PUMCHEpisode::fromJson($prevPUMCHData);
                     /*
                      * Now update the information that we already had about the episode with the new information received. This allows to keep track
                      * of the changes
                      */
-                    $patientInfo->update($PUMCHData);
+                    $episodeInfo->update($PUMCHData);
                 } else {
                     // This is the first time we receive information about a clinical episode for this patient
-                    $patientInfo = PUMCHEpisodeInfo::fromJson($PUMCHData);
+                    $episodeInfo = PUMCHEpisode::fromJson($PUMCHData);
                 }
 
                 ServiceLogger::getInstance()->debug(
-                        'Importing patient ' . sprintf('%03d', $processed) . ': ' . $patientInfo->getName() . ' (SickId: ' .
-                        $patientInfo->getPatientId() . ', Episode: ' . $patientInfo->getEpisodeId() . ')', 1);
+                        'Importing operations for episode ' . sprintf('%03d', $processed) . ': ' . $episodeInfo->getName() . ' (Patient Id: ' .
+                        $episodeInfo->getPatientId() . ', Episode Id: ' . $episodeInfo->getEpisodeId() . ')', 1);
                 try {
-                    $this->importIntoPHM($patientInfo, $kxEpisodesSubscription, $daySurgerySubscription);
-                    $success[] = $patientInfo;
-                    foreach ($episodeOperations as $record) {
+                    $this->importIntoPHM($episodeInfo, $kxEpisodesSubscription, $daySurgerySubscription);
+                    $success[] = $episodeInfo;
+                    foreach ($episodeOperationRecords as $record) {
                         // Preserve the informat¡on successfully imported so that we can track changes when updated information is received
                         $record->setPrevRecordContent($record->getRecordContent());
                         $record->setChanged(0);
                     }
                 } catch (Exception $e) {
-                    $importFailed[] = $patientInfo;
-                    foreach ($episodeOperations as $record) {
+                    $importFailed[] = $episodeInfo;
+                    foreach ($episodeOperationRecords as $record) {
                         $record->setChanged(2);
                     }
                     $processHistory->addLog($e->getMessage());
                     ServiceLogger::getInstance()->error($e->getMessage(), 1);
                 }
                 $processed++;
-                foreach ($episodeOperations as $record) {
+                foreach ($episodeOperationRecords as $record) {
                     $record->save();
                 }
                 if ($processed >= $MaxEpisodes) {
@@ -282,29 +279,29 @@ class ServiceFunctions {
         // Verify the existence of the required SUBSCRIPTIONS
         try {
             // Locate the SUBSCRIPTION for storing episode information
-            $episodesSubscription = $this->apiLK->subscription_get($GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'], $GLOBALS['TEAM_CODE']);
+            $episodesSubscription = $this->apiLK->subscription_get($GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'], $GLOBALS['PUMCH_EPISODES_TEAM_CODE']);
         } catch (Exception $e) {
             $serviceResponse->setCode(ServiceResponse::ERROR);
             $serviceResponse->setMessage(
-                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['TEAM_CODE'] .
-                    ') FOR IMPORTING PATIENTS: ' . $e->getMessage());
+                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'] . ', Team: ' .
+                    $GLOBALS['PUMCH_EPISODES_TEAM_CODE'] . ') FOR IMPORTING PATIENTS: ' . $e->getMessage());
             $processHistory->addLog($serviceResponse->getMessage());
             return $serviceResponse;
         }
 
         try {
             // Locate the SUBSCRIPTION of the "Day Surgery" PROGRAM for creating new ADMISSIONS of a patient
-            $daySurgerySubscription = $this->apiLK->subscription_get($GLOBALS['DAY_SURGERY_PROGRAM_CODE'], $GLOBALS['TEAM_CODE']);
+            $daySurgerySubscription = $this->apiLK->subscription_get($GLOBALS['DAY_SURGERY_PROGRAM_CODE'], $GLOBALS['DAY_SURGERY_TEAM_CODE']);
         } catch (Exception $e) {
             $serviceResponse->setCode(ServiceResponse::ERROR);
             $serviceResponse->setMessage(
-                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['DAY_SURGERY_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['TEAM_CODE'] .
+                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['DAY_SURGERY_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['DAY_SURGERY_TEAM_CODE'] .
                     ') FOR DAY SURGERY PATIENTS: ' . $e->getMessage());
             $processHistory->addLog($serviceResponse->getMessage());
             return $serviceResponse;
         }
 
-        $admissions = $this->apiLK->admission_list_program($daySurgerySubscription->getProgram()->getId(), 'ENROLLED', null, null, 1000, 0,
+        $admissions = $this->apiLK->admission_list_program($daySurgerySubscription->getProgram()->getId(), 'INCOMPLETE,ENROLLED', null, null, 1000, 0,
                 'enrol_date', 'asc', 'ALL', $daySurgerySubscription->getId());
 
         $rejectFailed = 0;
@@ -382,29 +379,26 @@ class ServiceFunctions {
      * <li>2: The record already existed but it has been updated</li>
      * </ul>
      *
-     * @param PUMCHEpisodeInfo $PUMCHRecord
+     * @param PUMCHOperationInfo $PUMCHRecord
      * @throws ServiceException
      * @return int
      */
     private function processFetchedRecord($PUMCHRecord) {
-        /** @var PUMCHProcedure $operation */
-        $operation = reset($PUMCHRecord->getProcedures());
-
-        $record = RecordPool::getInstance($PUMCHRecord->getPatientId(), $PUMCHRecord->getEpisodeId(), $PUMCHRecord->getProcedureId());
+        $record = RecordPool::getInstance($PUMCHRecord->getPatientId(), $PUMCHRecord->getEpisodeId(), $PUMCHRecord->getOperationId());
         if (!$record) {
-            $record = new RecordPool($PUMCHRecord->getPatientId(), $PUMCHRecord->getEpisodeId(), $PUMCHRecord->getProcedureId());
-            $record->setAdmissionDate($PUMCHRecord->getAdmissionTime());
-            $record->setOperationDate($PUMCHRecord->getInRoomDatetime());
+            $record = new RecordPool($PUMCHRecord->getPatientId(), $PUMCHRecord->getEpisodeId(), $PUMCHRecord->getOperationId());
+            $record->setAdmissionDate($PUMCHRecord->getInRoomDatetime());
+            $record->setOperationDate($PUMCHRecord->getOutRoomDatetime());
             $record->setRecordContent($PUMCHRecord->getOriginalObject());
-            $record->setLastUpdate($PUMCHRecord->getUpdateTime());
+            $record->setLastUpdate($PUMCHRecord->getUpdateDateTime());
             $ret = 1;
         } elseif ($record->equals($PUMCHRecord->getOriginalObject())) {
             $ret = 0;
         } else {
-            $record->setAdmissionDate($PUMCHRecord->getAdmissionTime());
-            $record->setOperationDate($PUMCHRecord->getInRoomDatetime());
+            $record->setAdmissionDate($PUMCHRecord->getInRoomDatetime());
+            $record->setOperationDate($PUMCHRecord->getOutRoomDatetime());
             $record->setRecordContent($PUMCHRecord->getOriginalObject());
-            $record->setLastUpdate($PUMCHRecord->getUpdateTime());
+            $record->setLastUpdate($PUMCHRecord->getUpdateDateTime());
             $ret = 2;
         }
 
@@ -420,7 +414,7 @@ class ServiceFunctions {
     /**
      * Imports or updates a patient fecthed from PUMCH into the Linkcare Platform
      *
-     * @param PUMCHEpisodeInfo $episodeInfo
+     * @param PUMCHEpisode $episodeInfo
      * @param APISubscription $episodeSubscription
      * @param APISubscription $daySurgerySubscription
      */
@@ -442,7 +436,7 @@ class ServiceFunctions {
             $errCode = ErrorCodes::UNEXPECTED_ERROR;
         }
         if ($errMsg) {
-            $errMsg = 'ERROR CREATING PATIENT ' . $episodeInfo->getName() . '(operationId: ' . $episodeInfo->getOperationId() . ', patientId:' .
+            $errMsg = 'ERROR CREATING PATIENT ' . $episodeInfo->getName() . '(episodeId: ' . $episodeInfo->getEpisodeId() . ', patientId:' .
                     $episodeInfo->getPatientId() . '): ' . $errMsg;
             throw new ServiceException($errCode, $errMsg);
         }
@@ -461,12 +455,14 @@ class ServiceFunctions {
             }
 
             $referral = null;
-            if ($episodeInfo->getSurgeonCode() && $GLOBALS['CASE_MANAGERS_TEAM']) {
-                $referral = $this->createProfessional($episodeInfo->getSurgeonCode(), $episodeInfo->getSurgeonName(), $GLOBALS['CASE_MANAGERS_TEAM'],
+            if ($episodeInfo->getReferralCode() && $GLOBALS['CASE_MANAGERS_TEAM']) {
+                $referral = $this->createProfessional($episodeInfo->getReferralCode(), $episodeInfo->getReferralName(), $GLOBALS['CASE_MANAGERS_TEAM'],
                         APIRole::CASE_MANAGER);
             }
 
-            $episodeInfoForm = $this->updateEpisodeData($admission, $episodeInfo, $referral);
+            foreach ($episodeInfo->getOperations() as $operation) {
+                $operationForms[$operation->getOperationId()] = $this->storeOperationData($admission, $operation);
+            }
 
             $admissionModified = false;
             if ($episodeInfo->getDischargeTime()) {
@@ -494,10 +490,18 @@ class ServiceFunctions {
 
             $isNewDaySurgeryAdmission = false;
             $daySurgeryAdmission = null;
-            if ($episodeInfo->shouldCreateDaySurgeryAdmission()) {
-                // Create or update an associate ADMISSION in the "DAY SURGERY" PROGRAM
+
+            /*
+             * Create or update an associate ADMISSION in the "DAY SURGERY" Care Plan
+             * Currently only one ADMISSION can be active in a Care Plan for the same patient, so, when the patient has more than one operation, we
+             * will only create an ADMISSION for the last operation
+             */
+            /** @var PUMCHOperationInfo $operation */
+            $lastOperation = end($episodeInfo->getOperations());
+            if ($lastOperation) {
+                $operationForm = $operationForms[$operation->getOperationId()];
                 if (!$isNewEpisode) {
-                    $daySurgeryAdmission = $this->findDaySurgeryAdmission($episodeInfo->getOperatingDatetime(), $episodeInfoForm, $patient,
+                    $daySurgeryAdmission = $this->findDaySurgeryAdmission($operation->getInRoomDatetime(), $operationForm, $patient,
                             $daySurgerySubscription);
                 }
                 if (!$daySurgeryAdmission) {
@@ -506,7 +510,7 @@ class ServiceFunctions {
                      * PROGRAM
                      */
                     ServiceLogger::getInstance()->debug('Create new ADMISSION in DAY SURGERY care plan', 2);
-                    $daySurgeryAdmission = $this->createDaySurgeryAdmission($patient, $episodeInfo, $episodeInfoForm, $daySurgerySubscription,
+                    $daySurgeryAdmission = $this->createDaySurgeryAdmission($patient, $operation, $operationForm, $daySurgerySubscription,
                             $isNewDaySurgeryAdmission);
                 }
             }
@@ -521,7 +525,7 @@ class ServiceFunctions {
             $errCode = ErrorCodes::UNEXPECTED_ERROR;
         }
         if ($errMsg) {
-            $errMsg = 'ERROR CREATING/UPDATING ADMISSION FOR PATIENT ' . $episodeInfo->getName() . '(operationId: ' . $episodeInfo->getOperationId() .
+            $errMsg = 'ERROR CREATING/UPDATING ADMISSION FOR PATIENT ' . $episodeInfo->getName() . '(episodeId: ' . $episodeInfo->getEpisodeId() .
                     ', patientId:' . $episodeInfo->getPatientId() . '): ' . $errMsg;
             throw new ServiceException($errCode, $errMsg);
         }
@@ -534,25 +538,30 @@ class ServiceFunctions {
     /**
      * Creates a new patient (or updates it if already exists) in Linkcare database using as reference the information in $importInfo
      *
-     * @param PUMCHEpisodeInfo $importInfo
+     * @param PUMCHOperationInfo $importInfo
      * @param APISubscription $subscription
      * @return APICase
      */
     private function createPatient($importInfo, $subscription = null) {
-        // Check if there already exists a patient with the PUMCH SickId
+        // Check if there already exists a patient with the PUMCH Patient Id
         $searchCondition = new StdClass();
         if (!$importInfo->getPatientId()) {
             throw new ServiceException(ErrorCodes::DATA_MISSING, 'patientId is not informed. It is mandatory to provide a patient Identifier.');
         }
 
-        $searchCondition->identifier = new StdClass();
-        $searchCondition->identifier->code = $GLOBALS['PATIENT_IDENTIFIER'];
-        $searchCondition->identifier->value = $importInfo->getPatientId();
-        $searchCondition->identifier->team = $GLOBALS['HOSPITAL_TEAM'];
-        $found = $this->apiLK->case_search(json_encode($searchCondition));
-        $caseId = null;
-        if (!empty($found)) {
-            $caseId = $found[0]->getId();
+        if ($importInfo->getCrmId()) {
+            // We have the ID of the patient in the AIMedicine CRM. We can use it as the patient reference
+            $caseId = 'AIMED|' . $importInfo->getCrmId();
+        } else {
+            $searchCondition->identifier = new StdClass();
+            $searchCondition->identifier->code = $GLOBALS['PATIENT_IDENTIFIER'];
+            $searchCondition->identifier->value = $importInfo->getPatientId();
+            $searchCondition->identifier->team = $GLOBALS['HOSPITAL_TEAM'];
+            $found = $this->apiLK->case_search(json_encode($searchCondition));
+            $caseId = null;
+            if (!empty($found)) {
+                $caseId = $found[0]->getId();
+            }
         }
 
         $contactInfo = new APIContact();
@@ -587,7 +596,16 @@ class ServiceFunctions {
         if ($caseId) {
             $programId = $subscription ? $subscription->getProgram()->getId() : null;
             $teamId = $subscription ? $subscription->getTeam()->getId() : null;
-            $this->apiLK->case_set_contact($caseId, $contactInfo, null, $programId, $teamId);
+            try {
+                $this->apiLK->case_set_contact($caseId, $contactInfo, null, $programId, $teamId);
+            } catch (Exception $e) {
+                /*
+                 * There was an error updating the contact information of the patient.
+                 * We will not throw an error in this case because the patient already exists and the only problem is that some fields could not be
+                 * updated
+                 */
+                ServiceLogger::getInstance()->debug('Could not update contact information of patient ' . $importInfo->getPatientId(), 2);
+            }
             $patient = $this->apiLK->case_get($caseId);
         } else {
             $patient = $this->apiLK->case_insert($contactInfo, $subscription ? $subscription->getId() : null, true);
@@ -603,7 +621,10 @@ class ServiceFunctions {
      *
      * @param string $employeeRef
      * @param string $name
+     * @param string $teamId
      * @param string $roleId
+     * @param string $roleId
+     * @throws APIException
      * @return APIUser
      */
     private function createProfessional($employeeRef, $name, $teamId, $roleId) {
@@ -635,10 +656,15 @@ class ServiceFunctions {
         $employeeId->setTeamId($GLOBALS['HOSPITAL_TEAM']);
         $contactInfo->addIdentifier($employeeId);
 
-        if (!$userId) {
-            $userId = $this->apiLK->team_user_insert($contactInfo, $teamId, $roleId);
-        } else {
-            $userId = $this->apiLK->team_member_add($contactInfo, $teamId, $userId, 'USER', $roleId);
+        try {
+            if (!$userId) {
+                $userId = $this->apiLK->team_user_insert($contactInfo, $teamId, $roleId);
+            } else {
+                $userId = $this->apiLK->team_member_add($contactInfo, $teamId, $userId, 'USER', $roleId);
+            }
+        } catch (APIException $e) {
+            $message = $e->getMessage() . " (user $employeeRef in team $teamId)";
+            throw new APIException($e->getCode(), $message);
         }
 
         $professional = $this->apiLK->user_get($userId);
@@ -650,7 +676,7 @@ class ServiceFunctions {
      * Search an existing Admission that corresponds to the selected Kanxin episode
      *
      * @param APICase $case
-     * @param PUMCHEpisodeInfo $importInfo
+     * @param PUMCHOperationInfo $importInfo
      * @param APISubscription $subscription
      */
     private function findAdmission($case, $importInfo, $subscription) {
@@ -671,9 +697,9 @@ class ServiceFunctions {
         }
         $foundEpisodeTask = null;
         foreach ($episodeList as $episodeTask) {
-            $episodeForms = $episodeTask->findForm(self::EPISODE_FORM_CODE);
+            $episodeForms = $episodeTask->findForm(self::OPERATION_FORM_CODE);
             foreach ($episodeForms as $form) {
-                $item = $form->findQuestion(PUMCHItemCodes::EPISODE_ID);
+                $item = $form->findQuestion(PUMCHItemCodes::INPATIENT_ID);
                 if ($item->getValue() == $importInfo->getEpisodeId()) {
                     // The episode already exists
                     $foundEpisodeTask = $episodeTask;
@@ -696,7 +722,7 @@ class ServiceFunctions {
      * Creates a new Admission for a patient in the "PUMCH Episodes" PROGRAM
      *
      * @param APICase $case
-     * @param PUMCHEpisodeInfo $episodeInfo
+     * @param PUMCHEpisode $episodeInfo
      * @param APISubscription $subscription
      * @return APIAdmission
      */
@@ -704,8 +730,7 @@ class ServiceFunctions {
         $setupParameters = new stdClass();
 
         $setupParameters->{PUMCHItemCodes::PATIENT_ID} = $episodeInfo->getPatientId();
-        $setupParameters->{PUMCHItemCodes::EPISODE_ID} = $episodeInfo->getEpisodeId();
-        $setupParameters->{PUMCHItemCodes::OPERATION_ID} = $episodeInfo->getOperationId();
+        $setupParameters->{PUMCHItemCodes::INPATIENT_ID} = $episodeInfo->getEpisodeId();
 
         return $this->apiLK->admission_create($case->getId(), $subscription->getId(), $episodeInfo->getAdmissionTime(), null, true, $setupParameters);
     }
@@ -714,13 +739,13 @@ class ServiceFunctions {
      * Creates a new Admission for a patient in the "PUMCH Day Surgery" PROGRAM
      *
      * @param APICase $case
-     * @param PUMCHEpisodeInfo $episodeInfo
-     * @param APIForm $episodeInfoForm
+     * @param PUMCHOperationInfo $episodeInfo
+     * @param APIForm $operationForm
      * @param APISubscription $subscription
      * @param boolean &$isNew
      * @return APIAdmission
      */
-    private function createDaySurgeryAdmission($case, $episodeInfo, $episodeInfoForm, $subscription, &$isNew) {
+    private function createDaySurgeryAdmission($case, $episodeInfo, $operationForm, $subscription, &$isNew) {
         /*
          * First of all check whether it is really necessary to create a new ADMISSION.
          * If any ADMISSION exists with a enroll date posterior to the admission date received from PUMCH, then it is not necessary to create a new
@@ -750,7 +775,7 @@ class ServiceFunctions {
              * situation is strange, but it may mean that we are receiving an update of an old record
              */
             $isActive = !in_array($found->getStatus(), [APIAdmission::STATUS_DISCHARGED, APIAdmission::STATUS_REJECTED]);
-            if ($isActive || $episodeInfo->getAdmissionTime() < $found->getEnrolDate()) {
+            if ($isActive || $episodeInfo->getoutRoomDatetime() < $found->getEnrolDate()) {
                 $isNew = false;
                 $admission = $found;
             }
@@ -760,12 +785,12 @@ class ServiceFunctions {
             $admission = $this->apiLK->admission_create($case->getId(), $subscription->getId(), null, null, true);
         }
 
-        if ($episodeInfoForm && $q = $episodeInfoForm->findQuestion(PUMCHItemCodes::DAY_SURGERY_ADMISSION)) {
+        if ($operationForm && $q = $operationForm->findQuestion(PUMCHItemCodes::DAY_SURGERY_ADMISSION)) {
             /*
              * Update the ID of the Admission created in the FORM where the rest of the information about the episode is stored.
              */
             $q->setAnswer($admission->getId());
-            $this->apiLK->form_set_answer($episodeInfoForm->getId(), $q->getId(), $admission->getId());
+            $this->apiLK->form_set_answer($operationForm->getId(), $q->getId(), $admission->getId());
         }
 
         return $admission;
@@ -831,14 +856,13 @@ class ServiceFunctions {
      * The return value is the APIForm with the information about the episode
      *
      * @param APIAdmission $admission
-     * @param PUMCHEpisodeInfo $episodeInfo
-     * @param APIUser $referral
+     * @param PUMCHOperationInfo $operation
      * @return APIForm
      */
-    private function updateEpisodeData($admission, $episodeInfo, $referral) {
+    private function storeOperationData($admission, $operation) {
         $filter = new TaskFilter();
         $filter->setTaskCodes(self::PATIENT_HISTORY_TASK_CODE);
-        $episodeList = $admission->getTaskList(1, 0, $filter);
+        $episodeOperationList = $admission->getTaskList(1, 0, $filter);
 
         /*
          * First of all we need to find out which is the TASK that corresponds to the episode informed.
@@ -846,141 +870,141 @@ class ServiceFunctions {
          * - If the TASK was found, update its contents with the new information
          * - If the TASK was not found, create a new one
          */
-        $episodeTask = reset($episodeList);
+        $operationTask = null;
 
-        if (!$episodeTask) {
-            /* We need to create a new TASK to store the episode information */
-            $episodeTask = $admission->insertTask(self::PATIENT_HISTORY_TASK_CODE, $episodeInfo->getAdmissionTime());
-        }
-
-        $episodeForms = $episodeTask->findForm(self::EPISODE_FORM_CODE);
-        foreach ($episodeForms as $form) {
-            $item = $form->findQuestion(PUMCHItemCodes::EPISODE_ID);
-            if (!$item->getValue()) {
-                $emptyForm = $form;
-            } elseif ($item->getValue() == $episodeInfo->getEpisodeId()) {
-                // The episode already exists
-                $episodeInfoForm = $form;
+        foreach ($episodeOperationList as $task) {
+            $episodeForms = $task->findForm(self::OPERATION_FORM_CODE);
+            foreach ($episodeForms as $form) {
+                $item = $form->findQuestion(PUMCHItemCodes::OPERATION_ID);
+                if (!$item->getValue()) {
+                    /*
+                     * We have found a TASK where the information is not fulfilled (operationId not informed). We assume temporarily that this is the
+                     * TASK to update unless another TASK with the expected operationId appears
+                     */
+                    $operationTask = $task;
+                    $operationForm = $form;
+                } elseif ($item->getValue() == $operation->getOperationId()) {
+                    // The episode already exists
+                    $operationTask = $task;
+                    $operationForm = $form;
+                    break;
+                }
+            }
+            if ($operationForm) {
                 break;
             }
         }
+        if (!$operationTask) {
+            /* We havent found the operationID. Wee need to create a new TASK to store the operation information */
+            $operationTask = $admission->insertTask(self::PATIENT_HISTORY_TASK_CODE, $operation->getInRoomDatetime());
+            $episodeForms = $operationTask->findForm(self::OPERATION_FORM_CODE);
+            $operationForm = empty($episodeForms) ? null : reset($episodeForms);
+        }
 
-        $episodeInfoForm = $episodeInfoForm ?? $emptyForm;
-
-        if (!$episodeInfoForm) {
-            // The FORM for storing the Episode information does not exist and there is no one empty to use. We need to create a new one in the TASK
-            $activities = $episodeTask->activityInsert(self::PATIENT_HISTORY_TASK_CODE);
+        if (!$operationForm) {
+            // The FORM for storing the Operation information does not exist and there is no one empty to use. We need to create a new one in the TASK
+            $activities = $operationTask->activityInsert(self::PATIENT_HISTORY_TASK_CODE);
             foreach ($activities as $act) {
                 if (!$act instanceof APIForm) {
                     continue;
                 }
-                if ($act->getFormCode() == self::EPISODE_FORM_CODE) {
-                    $episodeInfoForm = $act;
+                if ($act->getFormCode() == self::OPERATION_FORM_CODE) {
+                    $operationForm = $act;
                     break;
                 }
             }
         }
 
-        if (!$episodeInfoForm) {
+        if (!$operationForm) {
             // Error: could not create a new FORM to store the episode information
-            throw new ServiceException(ErrorCodes::API_COMM_ERROR, 'The FORM with FORM_CODE = ' . self::EPISODE_FORM_CODE . ' (from the TASK_TEMPLATE ' .
-                    self::PATIENT_HISTORY_TASK_CODE . ') to store the information of a patient was not inserted');
+            throw new ServiceException(ErrorCodes::API_COMM_ERROR, 'FAILED insertion of the FORM with FORM_CODE = ' . self::OPERATION_FORM_CODE .
+                    ' (from the TASK_TEMPLATE ' . self::PATIENT_HISTORY_TASK_CODE . ') to store the information of an operation');
         }
 
         $arrQuestions = [];
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::LAST_IMPORT, currentDate());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::PATIENT_ID, $episodeInfo->getPatientId());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::INPATIENT_ID, $episodeInfo->getInpatientId());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::EPISODE_ID, $episodeInfo->getEpisodeId());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::OPERATION_ID, $episodeInfo->getOperationId());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::DEPT_STAYED, $episodeInfo->getDeptStayed());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::DEPARTMENT, $episodeInfo->getDepartment());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::BED_NO, $episodeInfo->getBedNo());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::OPERATING_ROOM_NO, $episodeInfo->getOperatingRoomNo());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::OPERATING_DATETIME, $episodeInfo->getOperatingDatetime());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::DIAG_BEFORE, $episodeInfo->getDiagBeforeOperation());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::EMERGENCY_INDICATOR,
-                $episodeInfo->getEmergencyIndicator([$this, 'mapEmergencyValueToOptionId']));
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::SURGEON_NAME, $episodeInfo->getSurgeonName());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::SURGEON_NAME1, $episodeInfo->getSurgeonName1());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_NAME,
-                $episodeInfo->getAnesthesiaDoctorName());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_CODE,
-                $episodeInfo->getAnesthesiaDoctorCode());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_NAME2,
-                $episodeInfo->getAnesthesiaDoctorName2());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_CODE2,
-                $episodeInfo->getAnesthesiaDoctorCode2());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_NAME3,
-                $episodeInfo->getAnesthesiaDoctorName3());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_CODE3,
-                $episodeInfo->getAnesthesiaDoctorCode3());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_NAME4,
-                $episodeInfo->getAnesthesiaDoctorName4());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_CODE4,
-                $episodeInfo->getAnesthesiaDoctorCode4());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ANESTHESIA_METHOD, $episodeInfo->getAnesthesiaMethod());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::OPERATION_POSITION, $episodeInfo->getOperationPosition());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::NAME, $episodeInfo->getName());
-        $arrQuestions[] = $this->updateOptionQuestionValue($episodeInfoForm, PUMCHItemCodes::SEX, null, $episodeInfo->getSex([$this, 'mapSexValue']));
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::AGE, $episodeInfo->getAge());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::BIRTHDAY, $episodeInfo->getBirthday());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ID_CARD_TYPE, $episodeInfo->getIdCardType());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::ID_CARD, $episodeInfo->getIdCard());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::PHONE, $episodeInfo->getPhone());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::IN_ROOM_DATETIME, $episodeInfo->getInRoomDatetime());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::OUT_ROOM_DATETIME, $episodeInfo->getoutRoomDatetime());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::OPER_STATUS, $episodeInfo->getOperStatus());
-        $arrQuestions[] = $this->updateTextQuestionValue($episodeInfoForm, PUMCHItemCodes::LAST_UPDATE, $episodeInfo->getUpdateTime());
-
-        // Procedure information stored as a table (1 row)
-        $ix = 1;
-        $procedures = $episodeInfo->getProcedures();
-        if (!empty($procedures) && ($arrayHeader = $episodeInfoForm->findQuestion(PUMCHItemCodes::PROCEDURE_TABLE)) &&
-                $arrayHeader->getType() == APIQuestion::TYPE_ARRAY) {
-            foreach ($procedures as $procedure) {
-                $arrQuestions[] = $this->updateArrayTextQuestionValue($episodeInfoForm, $arrayHeader->getId(), $ix, PUMCHItemCodes::PROCEDURE_ID,
-                        $procedure->getOperationId());
-                $arrQuestions[] = $this->updateArrayTextQuestionValue($episodeInfoForm, $arrayHeader->getId(), $ix, PUMCHItemCodes::PROCEDURE_NAME,
-                        $procedure->getOperationName());
-
-                $ix++;
-            }
-        }
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::LAST_IMPORT, currentDate());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::CRM_ID, $operation->getCrmId());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::PATIENT_ID, $operation->getPatientId());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::INPATIENT_ID, $operation->getEpisodeId());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPERATION_ID, $operation->getOperationId());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::DEPT_STAYED, $operation->getDeptStayed());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::DEPARTMENT, $operation->getDepartment());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::BED_NO, $operation->getBedNo());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPERATING_ROOM_NO, $operation->getOperatingRoomNo());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPERATION_NAME, $operation->getOperationName());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPERATING_DATETIME, $operation->getOperatingDatetime());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::DIAG_BEFORE, $operation->getDiagBeforeOperation());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::EMERGENCY_INDICATOR,
+                $operation->getEmergencyIndicator([$this, 'mapEmergencyValueToOptionId']));
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::SURGEON_NAME, $operation->getSurgeonName());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::SURGEON_NAME1, $operation->getSurgeonName1());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_NAME, $operation->getAnesthesiaDoctorName());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_CODE, $operation->getAnesthesiaDoctorCode());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_NAME2,
+                $operation->getAnesthesiaDoctorName2());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_CODE2,
+                $operation->getAnesthesiaDoctorCode2());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_NAME3,
+                $operation->getAnesthesiaDoctorName3());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_CODE3,
+                $operation->getAnesthesiaDoctorCode3());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_NAME4,
+                $operation->getAnesthesiaDoctorName4());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ANESTHESIA_DOCTOR_CODE4,
+                $operation->getAnesthesiaDoctorCode4());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ANESTHESIA_METHOD, $operation->getAnesthesiaMethod());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPERATION_POSITION, $operation->getOperationPosition());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::NAME, $operation->getName());
+        $arrQuestions[] = $this->updateOptionQuestionValue($operationForm, PUMCHItemCodes::SEX, null, $operation->getSex([$this, 'mapSexValue']));
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::AGE, $operation->getAge());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::BIRTHDAY, $operation->getBirthday());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ID_CARD_TYPE, $operation->getIdCardType());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ID_CARD, $operation->getIdCard());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::PHONE, $operation->getPhone());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::IN_ROOM_DATETIME, $operation->getInRoomDatetime());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OUT_ROOM_DATETIME, $operation->getoutRoomDatetime());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPER_STATUS, $operation->getOperStatus());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::LAST_UPDATE, $operation->getUpdateDateTime());
 
         // Remove null entries
         $arrQuestions = array_filter($arrQuestions);
 
         if (!empty($arrQuestions)) {
-            $this->apiLK->form_set_all_answers($episodeInfoForm->getId(), $arrQuestions, true);
+            $this->apiLK->form_set_all_answers($operationForm->getId(), $arrQuestions, true);
         }
 
-        if ($referral) {
+        $surgeon = null;
+        if ($operation->getSurgeonCode() && $GLOBALS['SURGEONS_TEAM']) {
+            $surgeon = $this->createProfessional($operation->getSurgeonCode(), $operation->getSurgeonName(), $GLOBALS['SURGEONS_TEAM'],
+                    APIRole::CASE_MANAGER);
+        }
+
+        if ($surgeon) {
             // Assign the Task to the referral of the Admission (if not assigned yet)
-            foreach ($episodeTask->getAssignments() as $assignment) {
-                if ($assignment->getUserId() == $referral->getId() && ($assignment->getRoleId() == APIRole::CASE_MANAGER)) {
+            foreach ($operationTask->getAssignments() as $assignment) {
+                if ($assignment->getUserId() == $surgeon->getId() && ($assignment->getRoleId() == APIRole::CASE_MANAGER)) {
                     $alreadyAssigned = true;
                     break;
                 }
             }
 
             if (!$alreadyAssigned) {
-                $episodeTask->clearAssignments();
-                $assignment = new APITaskAssignment(APIRole::CASE_MANAGER, $GLOBALS['CASE_MANAGERS_TEAM'], $referral->getId());
-                $episodeTask->addAssignments($assignment);
+                $operationTask->clearAssignments();
+                $assignment = new APITaskAssignment(APIRole::CASE_MANAGER, $GLOBALS['CASE_MANAGERS_TEAM'], $surgeon->getId());
+                $operationTask->addAssignments($assignment);
             }
         }
 
         // Assign the Task to the anesthesists
         if ($GLOBALS['ANESTHESIA_TEAM']) {
             $anesthesists = [];
-            $anesthesists[] = ['code' => $episodeInfo->getAnesthesiaDoctorCode(), 'name' => $episodeInfo->getAnesthesiaDoctorName()];
-            $anesthesists[] = ['code' => $episodeInfo->getAnesthesiaDoctorCode2(), 'name' => $episodeInfo->getAnesthesiaDoctorName2()];
-            $anesthesists[] = ['code' => $episodeInfo->getAnesthesiaDoctorCode3(), 'name' => $episodeInfo->getAnesthesiaDoctorName3()];
-            $anesthesists[] = ['code' => $episodeInfo->getAnesthesiaDoctorCode4(), 'name' => $episodeInfo->getAnesthesiaDoctorName4()];
+            $anesthesists[] = ['code' => $operation->getAnesthesiaDoctorCode(), 'name' => $operation->getAnesthesiaDoctorName()];
+            $anesthesists[] = ['code' => $operation->getAnesthesiaDoctorCode2(), 'name' => $operation->getAnesthesiaDoctorName2()];
+            $anesthesists[] = ['code' => $operation->getAnesthesiaDoctorCode3(), 'name' => $operation->getAnesthesiaDoctorName3()];
+            $anesthesists[] = ['code' => $operation->getAnesthesiaDoctorCode4(), 'name' => $operation->getAnesthesiaDoctorName4()];
 
             $assignementsChanged = false;
-            $currentAssignments = $episodeTask->getAssignments();
+            $currentAssignments = $operationTask->getAssignments();
             $newAssignments = [];
             foreach ($anesthesists as $doctorInfo) {
                 $code = $doctorInfo['code'];
@@ -1008,26 +1032,26 @@ class ServiceFunctions {
                 break;
             }
 
-            $assignementsChanged = $assignementsChanged || (count($newAssignments) != $episodeTask->getAssignments());
+            $assignementsChanged = $assignementsChanged || (count($newAssignments) != $operationTask->getAssignments());
 
             if ($assignementsChanged) {
-                $episodeTask->clearAssignments();
-                $episodeTask->addAssignments($newAssignments);
+                $operationTask->clearAssignments();
+                $operationTask->addAssignments($newAssignments);
             }
         }
 
-        if ($episodeInfo->getAdmissionTime()) {
-            $dateParts = explode(' ', $episodeInfo->getAdmissionTime());
+        if ($operation->getInRoomDatetime()) {
+            $dateParts = explode(' ', $operation->getInRoomDatetime());
             $date = $dateParts[0];
             $time = $dateParts[1];
-            $episodeTask->setDate($date);
-            $episodeTask->setHour($time);
+            $operationTask->setDate($date);
+            $operationTask->setHour($time);
         }
 
-        $episodeTask->setLocked(true);
-        $episodeTask->save();
+        $operationTask->setLocked(true);
+        $operationTask->save();
 
-        return $episodeInfoForm;
+        return $operationForm;
     }
 
     /**

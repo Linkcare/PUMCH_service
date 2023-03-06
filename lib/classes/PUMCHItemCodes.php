@@ -2,13 +2,14 @@
 
 class PUMCHItemCodes {
     const LAST_IMPORT = 'LAST_IMPORT';
+    const CRM_ID = 'CRM_ID';
     const PATIENT_ID = 'PATIENT_ID';
     const INPATIENT_ID = 'INPATIENT_ID';
-    const EPISODE_ID = 'EPISODE_ID';
     const OPERATION_ID = 'OPERATION_ID';
     const DEPT_STAYED = 'DEPARTMENT_CODE';
     const DEPARTMENT = 'INPATIENT_DEPARTMENT';
     const BED_NO = 'BED_NUM';
+    const OPERATION_NAME = 'OPERATION_NAME';
     const OPERATING_ROOM_NO = 'OP_ROOM_NUM';
     const OPERATING_DATETIME = 'OP_TIME';
     const DIAG_BEFORE = 'PREOP_DIAG';
@@ -41,10 +42,5 @@ class PUMCHItemCodes {
 
     //
     const DAY_SURGERY_ADMISSION = 'DAY_SURGERY_ADMISSION';
-
-    // Procedure ITEM CODES
-    const PROCEDURE_TABLE = 'PROC_TABLE';
-    const PROCEDURE_ID = 'PROC_ID';
-    const PROCEDURE_NAME = 'PROC_NAME';
 }
 

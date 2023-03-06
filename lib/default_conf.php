@@ -15,7 +15,7 @@ $GLOBALS['WS_LINK'] = 'https://api.linkcareapp.com/ServerWSDL.php';
 /* Credentials of the SERVICE USER that will connect to the Linkare platform and import the patients */
 $GLOBALS['SERVICE_USER'] = 'service';
 $GLOBALS['SERVICE_PASSWORD'] = 'password';
-$GLOBALS['SERVICE_TEAM'] = 'LINKCARE';
+$GLOBALS['SERVICE_TEAM'] = 'PUMCH';
 
 /* Language of the "service" user. This will be the default language of new patients created by the service */
 $GLOBALS['LANGUAGE'] = 'ZH';
@@ -25,19 +25,23 @@ $GLOBALS['PUMCH_API_URL'] = 'https://hcrm.pumch.cn/dataapi';
 
 /* Program code of the Subscription to store the information about the episodes received from PUMCH */
 $GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'] = 'PUMCH_ADMISSIONS';
+/* Team code of the PUMCH EPISODES Subscription owner */
+$GLOBALS['PUMCH_EPISODES_TEAM_CODE'] = 'PUMCH';
+
 /*
  * Program code of a Subscription of a secondary PROGRAM. When a new episode is received from PUMCH, a new ADMISSION will also be created in this
  * SUBSCRIPTION. The goal is to let a Case Manager decide whether the patient must be enrolled in any Post Intervention Follow-up PROGRAM
  */
 $GLOBALS['DAY_SURGERY_PROGRAM_CODE'] = 'DSFU';
+/* Team code of the DAY SURGERY Subscription owner */
+$GLOBALS['DAY_SURGERY_TEAM_CODE'] = 'PUMCH';
+
 /*
  * Day interval to reject ADMISSIONS that have status 'enrolled' in the "DAY SURGERY FOLLOW UP" PROGRAM but discharged in the "PUMCH EPISODES"
  * PROGRAM.
  * If the discharge ocurred before the configured period, the enrolled ADMISSION will be rejected
  */
 $GLOBALS['REJECT_ENROLLED_AFTER_DAYS'] = 2;
-/* Team code of the Subscription owner */
-$GLOBALS['TEAM_CODE'] = 'xxxxx';
 
 /*
  * Team where the PUMCH Case Managers will be added as members.
@@ -45,6 +49,11 @@ $GLOBALS['TEAM_CODE'] = 'xxxxx';
  * This doctors will be registered in the Linkcare platform and added as "Case Manager" members of the Team indicated in this configuration parameter
  */
 $GLOBALS['CASE_MANAGERS_TEAM'] = '';
+/*
+ * Team where the PUMCH Surgeons will be added as members.
+ * This doctors will be registered in the Linkcare platform and added as "Case Manager" members of the Team indicated in this configuration parameter
+ */
+$GLOBALS['SURGEONS_TEAM'] = '';
 /*
  * Team where the PUMCH anesthesists will be added as members.
  * This anesthesists will be registered in the Linkcare platform and added as "Staff" members of the Team indicated in this configuration parameter
@@ -125,8 +134,8 @@ require_once 'classes/ServiceLogger.php';
 require_once 'classes/ErrorCodes.php';
 require_once 'classes/ServiceException.php';
 require_once 'classes/PUMCHItemCodes.php';
-require_once 'classes/PUMCHProcedure.php';
-require_once 'classes/PUMCHEpisodeInfo.php';
+require_once 'classes/PUMCHOperationInfo.php';
+require_once 'classes/PUMCHEpisode.php';
 require_once 'classes/PUMCHAPI.php';
 require_once 'classes/ProcessHistory.php';
 require_once 'classes/RecordPool.php';

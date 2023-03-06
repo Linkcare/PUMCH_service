@@ -29,6 +29,13 @@ function apiConnect($token, $user = null, $password = null, $role = null, $team 
         }
 
         $session = LinkcareSoapAPI::getInstance()->getSession();
+    } catch (APIException $e) {
+        throw $e;
+    } catch (Exception $e) {
+        throw $e;
+    }
+
+    try {
         // Ensure to set the correct active ROLE and TEAM
         if ($team && $team != $session->getTeamCode() && $team != $session->getTeamId()) {
             LinkcareSoapAPI::getInstance()->session_set_team($team);
@@ -47,6 +54,5 @@ function apiConnect($token, $user = null, $password = null, $role = null, $team 
     } catch (Exception $e) {
         throw $e;
     }
-
     return $session;
 }

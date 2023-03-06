@@ -99,7 +99,8 @@ class LinkcareSoapAPI {
         $date = currentDate($timezone);
         $result = $client->session_init($user, $password, null, null, $language, '2.7.26', $reuseExistingSession ? 1 : 0, $date);
         if ($result["ErrorCode"]) {
-            throw new APIException($result["ErrorCode"], $result["ErrorMsg"]);
+            $message = "Error initiating session with user $user: " . $result["ErrorMsg"];
+            throw new APIException($result["ErrorCode"], $message);
         } else {
             $session = APISession::parseResponse($result);
         }

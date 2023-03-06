@@ -241,27 +241,27 @@ class APICasePreferences {
             $parentNode = $xml->rootNode;
         }
 
-        if (isset($this->editableByProfessional)) {
+        if ($this->editableByProfessional !== null) {
             $xml->createChildNode($parentNode, 'editable_by_user', boolToText($this->editableByProfessional));
         }
-        if (isset($this->editableByCase)) {
+        if ($this->editableByCase !== null) {
             $xml->createChildNode($parentNode, 'editable_by_case', boolToText($this->editableByCase));
         }
 
-        if (isset($this->gpsMapService)) {
+        if ($this->gpsMapService !== null) {
             $mapNode = $xml->createChildNode($parentNode, 'map_service');
             $xml->createChildNode($mapNode, 'code', $this->gpsMapService);
         }
 
         $notificationsNode = $xml->createChildNode($parentNode, 'notifications');
-        if (isset($this->notificationChannels)) {
-            $channels = implode(',', trim($this->notificationChannels));
+        if (is_array($this->notificationChannels)) {
+            $channels = implode(',', $this->notificationChannels);
             $xml->createChildNode($notificationsNode, 'channels', $channels);
         }
-        if (isset($this->notificationEventPriority)) {
+        if ($this->notificationEventPriority !== null) {
             $xml->createChildNode($notificationsNode, 'event_priority', $this->notificationEventPriority);
         }
-        if (isset($this->notificationStartTime)) {
+        if ($this->notificationStartTime !== null) {
             $xml->createChildNode($notificationsNode, 'from_time', $this->notificationStartTime);
         }
 

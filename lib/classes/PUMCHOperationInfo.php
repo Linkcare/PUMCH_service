@@ -1,6 +1,6 @@
 <?php
 
-class PUMCHEpisodeInfo {
+class PUMCHOperationInfo {
     /** @var stdClass */
     private $originalObject;
     /**
@@ -10,16 +10,9 @@ class PUMCHEpisodeInfo {
      */
     private $trackChanges = true;
     private $changeList = [];
-    /**
-     * When change tracking is set, whenever a new Procedure is added to the list of procedures it will also be tracked to know that the list of
-     * procedures has been modified
-     *
-     * @var PUMCHProcedure
-     */
-    private $newProcedures = [];
 
-    // "scheduled": "788360",
-
+    /** @var string*/
+    private $crmId;
     /** @var string*/
     private $patientId;
     /** @var string*/
@@ -33,7 +26,7 @@ class PUMCHEpisodeInfo {
     /** @var string*/
     private $bedNo;
     /** @var string*/
-    private $procedureId;
+    private $operationName;
     /** @var string*/
     private $operatingRoomNo;
     /** @var string*/
@@ -91,13 +84,11 @@ class PUMCHEpisodeInfo {
 
     /** @var string*/
     private $phone;
-    /** @var string*/
-    private $inpatientId;
-    /** @var string*/
-    private $updateTime;
 
-    /** @var PUMCHProcedure[] */
-    private $procedures = [];
+    /** @var string*/
+    private $createDateTime;
+    /** @var string*/
+    private $updateDateTime;
 
     /**
      * ******* GETTERS *******
@@ -109,6 +100,15 @@ class PUMCHEpisodeInfo {
      */
     public function getOriginalObject() {
         return $this->originalObject;
+    }
+
+    /**
+     * AIMedicine's CRM patient ID
+     *
+     * @return string
+     */
+    public function getCrmId() {
+        return $this->crmId;
     }
 
     /**
@@ -166,14 +166,12 @@ class PUMCHEpisodeInfo {
     }
 
     /**
-     * Id of the procedure.
-     * This is a value that is not retrieved from the PUMCH database and is assigned automatically by the integration service. It is a sequential
-     * number for each of the operations of a patient
+     * Name of the operation
      *
      * @return string
      */
-    public function getProcedureId() {
-        return $this->procedureId;
+    public function getOperationName() {
+        return $this->operationName;
     }
 
     /**
@@ -439,28 +437,19 @@ class PUMCHEpisodeInfo {
     }
 
     /**
-     * National Id Card number
      *
      * @return string
      */
-    public function getInpatientId() {
-        return $this->inpatientId;
+    public function getCreateDateTime() {
+        return $this->createDateTime;
     }
 
     /**
      *
      * @return string
      */
-    public function getUpdateTime() {
-        return $this->updateTime;
-    }
-
-    /**
-     *
-     * @return PUMCHProcedure[]
-     */
-    public function getProcedures() {
-        return $this->procedures;
+    public function getUpdateDateTime() {
+        return $this->updateDateTime;
     }
 
     /**
@@ -474,6 +463,15 @@ class PUMCHEpisodeInfo {
      */
     public function setPatientId($value) {
         $this->patientId = $value;
+    }
+
+    /**
+     * AIMedicine's CRM patient ID
+     *
+     * @param string $value
+     */
+    public function setCrmId($value) {
+        $this->crmId = $value;
     }
 
     /**
@@ -522,14 +520,12 @@ class PUMCHEpisodeInfo {
     }
 
     /**
-     * Id of the procedure.
-     * This is a value that is not retrieved from the PUMCH database and is assigned automatically by the integration service. It is a sequential
-     * number for each of the operations of a patient
+     * Name of the operation
      *
      * @param string $value
      */
-    public function setProcedureId($value) {
-        $this->assignAndTrackPropertyChange('procedureId', $value);
+    public function setOperationName($value) {
+        $this->assignAndTrackPropertyChange('operationName', $value);
     }
 
     /**
@@ -777,203 +773,80 @@ class PUMCHEpisodeInfo {
     }
 
     /**
-     * National Id Card number
      *
      * @param string $value
      */
-    public function setInpatientId($value) {
-        $this->assignAndTrackPropertyChange('inpatientId', $value);
+    public function setCreateDateTime($value) {
+        $this->createDateTime = $value;
     }
 
     /**
      *
      * @param string $value
      */
-    public function setUpdateTime($value) {
-        $this->updateTime = $value;
+    public function setUpdateDateTime($value) {
+        $this->updateDateTime = $value;
     }
 
     /**
      * ******* METHODS *******
      */
-    /**
-     * In PUMCH each operation corresponds to an Admission, and it doesn't exist any value to know the "Admission time".
-     * The operation start time (inRoomDatetime) can be considered the Admission date
-     *
-     * @return string
-     */
-    public function getAdmissionTime() {
-        return $this->getInRoomDatetime();
-    }
 
     /**
-     * In PUMCH each operation corresponds to an Admission, and it doesn't exist any value to know the "Discharge time".
-     * The discharge is always done the same day than the operation so we assign a discharge date just before the midnight of the operation date
+     * Updates a PUMCHOperationInfo object from the information received from the PUMCH hospital
      *
-     * @return string
+     * @param stdClass $operation
      */
-    public function getDischargeTime() {
-        $day = $this->getOutRoomDatetime();
-        if (!$day) {
-            $day = $this->getInRoomDatetime();
-        }
-        if ($day) {
-            $day = explode(' ', $day)[0] . ' ' . '23:59:59';
-        }
-
-        return $day;
-    }
-
-    /**
-     * Returns true when the operation meets the conditions to create an Admission in the Day Surgery care plan
-     *
-     * @return boolean
-     */
-    public function shouldCreateDaySurgeryAdmission() {
-        // The department must be "Day surgery inpatient west campus"
-        if ($this->department != '日间病房西院') {
-            return false;
-        }
-
-        if (!in_array($this->operatingRoomNo, ['西601', '西602', '西603', '西604', '西609', '西610'])) {
-            return false;
-        }
-
-        if (!$this->outRoomDatetime) {
-            return false;
-        }
-
-        if ($this->operStatus != 'S') {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Extracts the information about an operation from a record received from the PUMCH hospital.
-     * A new PUMCHOperation object will be added to the list of operations of the episode
-     *
-     * @param stdClass $info
-     */
-    public function addOperation($info, $operationId) {
-        if (isNullOrEmpty($info->operationName)) {
+    public function update($operation) {
+        if (!$operation) {
             return;
         }
-        if (array_key_exists($info->operationName, $this->procedures)) {
-            $procedure = $this->procedures[$operationId];
-            $procedure->update($info);
-        } else {
-            $procedure = PUMCHProcedure::fromJson($info, $operationId);
-            $this->procedures[$operationId] = $procedure;
-            if ($this->trackChanges) {
-                // A new procedure has been created and change trackin is active, so we store a list of new procedures added
-                $this->newProcedures[$operationId] = $procedure;
-            }
-        }
-    }
 
-    /**
-     * Updates a PUMCHEpisodeInfo object from the information received from the PUMCH hospital
-     *
-     * @param stdClass $episodeProcedures
-     */
-    public function update($episodeProcedures) {
-        if (empty($episodeProcedures)) {
-            return;
-        }
-        if (!is_array($episodeProcedures)) {
-            $episodeProcedures = [$episodeProcedures];
+        $this->originalObject = $operation;
+
+        if (isNullOrEmpty($operation->scheduled)) {
+            throw new ServiceException(ErrorCodes::DATA_MISSING, 'Operation ' . $operation->scheduled . ' arrived without Operation Id');
         }
 
-        /*
-         * All procedures of an episode should contain the same information. The only difference is the procedure name
-         * Nevertheless it may happen that some fields have been updated in the last procedures, so we must ensure that we get the correct
-         * information. For example,
-         * the outRoomDateTime may be empty in the first procedure, but with a non null value in the last procedure.
-         * For this reason we will sort the received records by the outRoomDatetime and use the last one to obtain the most recent information about
-         * the episode
-         */
-        usort($episodeProcedures,
-                function ($a, $b) {
-                    if (!$a->outRoomDatetime && !$b->outRoomDatetime) {
-                        // No record has outRoomDatetime, so we keep the order in which they were received
-                        return (0);
-                    }
-                    if (!$a->outRoomDatetime && $b->outRoomDatetime) {
-                        // One record has a non-null outRoomDatetime, so we consider that record as the oldest one
-                        return (-1);
-                    }
-                    if ($a->outRoomDatetime && !$b->outRoomDatetime) {
-                        // One record has a non-null outRoomDatetime, so we consider that record as the oldest one
-                        return (1);
-                    }
-                    return (strcmp($a->outRoomDatetime, $b->outRoomDatetime));
-                });
-
-        /* @var RecordPool $lastOperation */
-        $lastOperation = end($episodeProcedures);
-
-        $this->originalObject = $lastOperation;
-
-        if (isNullOrEmpty($lastOperation->patientID)) {
-            throw new ServiceException(ErrorCodes::DATA_MISSING, 'Operation ' . $lastOperation->scheduled . ' arrived without Patient ID');
-        }
-        if (isNullOrEmpty($lastOperation->inRoomDatetime)) {
-            throw new ServiceException(ErrorCodes::DATA_MISSING, 'Operation ' . $lastOperation->scheduled . ' arrived without inRoomDatetime');
-        }
-
-        $this->setPatientId($lastOperation->patientID);
-        $this->setInpatientId($lastOperation->inpatientID);
-        $this->setEpisodeId($lastOperation->scheduled);
-        $this->setOperationId($lastOperation->scheduled);
-        $this->setDeptStayed($lastOperation->deptstayed);
-        $this->setDepartment($lastOperation->department);
-        $this->setBedNo($lastOperation->bedNo);
-        $this->setProcedureId($lastOperation->procedureId);
-        $this->setOperatingRoomNo($lastOperation->operatingroomno);
-        $this->setOperatingDatetime($lastOperation->operatingdatetime);
-        $this->setDiagBeforeOperation($lastOperation->diagbeforeoperation);
-        $this->setEmergencyIndicator($lastOperation->emergencyindicator);
-        $this->setSurgeonName($lastOperation->surgeonname);
+        $this->setCrmId($operation->crm_id);
+        $this->setPatientId($operation->patientID);
+        $this->setEpisodeId($operation->inpatientID);
+        $this->setOperationId($operation->scheduled);
+        $this->setDeptStayed($operation->deptstayed);
+        $this->setDepartment($operation->department);
+        $this->setBedNo($operation->bedNo);
+        $this->setOperatingRoomNo($operation->operatingroomno);
+        $this->setOperatingDatetime($operation->operatingdatetime);
+        $this->setDiagBeforeOperation($operation->diagbeforeoperation);
+        $this->setEmergencyIndicator($operation->emergencyindicator);
+        $this->setSurgeonName($operation->surgeonname);
         // $this->setSurgeonCode($lastOperation->surgeon); // Currently we are not receiving the surgeon code
-        $this->setSurgeonName1($lastOperation->surgeonname1);
+        $this->setSurgeonName1($operation->surgeonname1);
         // $this->setSurgeonCode1($lastOperation->surgeon1); // Currently we are not receiving the surgeon code assistant
 
-        $this->setAnesthesiaDoctorName($lastOperation->anesthesiadoctorname);
-        $this->setAnesthesiaDoctorCode($lastOperation->anesthesiadoctor);
-        $this->setAnesthesiaDoctorName2($lastOperation->anesthesiadoctorname2);
-        $this->setAnesthesiaDoctorCode2($lastOperation->anesthesiadoctor2);
-        $this->setAnesthesiaDoctorName3($lastOperation->anesthesiadoctorname3);
-        $this->setAnesthesiaDoctorCode3($lastOperation->anesthesiadoctor3);
-        $this->setAnesthesiaDoctorName4($lastOperation->anesthesiadoctorname4);
-        $this->setAnesthesiaDoctorCode4($lastOperation->anesthesiaDoctor4);
-        $this->setAnesthesiaMethod($lastOperation->anesthesiaMethod);
-        $this->setOperationPosition($lastOperation->operationPosition);
-        $this->setName($lastOperation->name);
-        $this->setSex($lastOperation->sex);
-        $this->setAge($lastOperation->age);
-        $this->setBirthday($lastOperation->birthDay);
-        $this->setIdCardType($lastOperation->idType);
-        $this->setIdCard($lastOperation->idCard);
-        $this->setInRoomDatetime($lastOperation->inRoomDatetime);
-        $this->setoutRoomDatetime($lastOperation->outRoomDatetime);
-        $this->setOperStatus($lastOperation->operStatus);
-        $this->setPhone($lastOperation->phone);
-        $this->setUpdateTime($lastOperation->updateTime ?? $lastOperation->operatingdatetime);
-
-        // Now create the list of procedures of this episode
-        foreach ($episodeProcedures as $operation) {
-            if (isNullOrEmpty($operation->operationName)) {
-                return;
-            }
-            /*
-             * Use the procedure name as the identifier of the operation.
-             * The PUMCH integration API may return repeated procedure names, but we must keep only different procedure names and remove duplicates
-             */
-
-            $this->addOperation($operation, $operation->operationName);
-        }
+        $this->setAnesthesiaDoctorName($operation->anesthesiadoctorname);
+        $this->setAnesthesiaDoctorCode($operation->anesthesiadoctor);
+        $this->setAnesthesiaDoctorName2($operation->anesthesiadoctorname2);
+        $this->setAnesthesiaDoctorCode2($operation->anesthesiadoctor2);
+        $this->setAnesthesiaDoctorName3($operation->anesthesiadoctorname3);
+        $this->setAnesthesiaDoctorCode3($operation->anesthesiadoctor3);
+        $this->setAnesthesiaDoctorName4($operation->anesthesiadoctorname4);
+        $this->setAnesthesiaDoctorCode4($operation->anesthesiaDoctor4);
+        $this->setAnesthesiaMethod($operation->anesthesiaMethod);
+        $this->setOperationPosition($operation->operationPosition);
+        $this->setOperationName($operation->operationName);
+        $this->setName($operation->name);
+        $this->setSex($operation->sex);
+        $this->setAge($operation->age);
+        $this->setInRoomDatetime($operation->inRoomDatetime);
+        $this->setoutRoomDatetime($operation->outRoomDatetime);
+        $this->setOperStatus($operation->operStatus);
+        $this->setPhone($operation->phone);
+        $this->setIdCardType($operation->idType);
+        $this->setIdCard($operation->idCard);
+        $this->setBirthday($operation->birthDay);
+        $this->setCreateDateTime($operation->createDateTime ?? $this->getOperatingDatetime());
+        $this->setUpdateDateTime($operation->lastUpdateDateTime ?? $this->getCreateDateTime());
     }
 
     /**
@@ -985,78 +858,24 @@ class PUMCHEpisodeInfo {
         if (count($this->changeList) > 0 || count($this->newProcedures) > 0) {
             return true;
         }
-        foreach ($this->getProcedures() as $proc) {
-            if ($proc->hasChanges()) {
-                return true;
-            }
-        }
         return false;
     }
 
     /**
-     * Returns a message composed by OBJECT CODES informing about the relevant changes detected.
-     * Object Codes allow to handle language localization because the literals are defined in the PROGRAM
+     * Creates a PUMCHOperationInfo object from the information received from the PUMCH hospital
      *
-     * @return string
+     * @param stdClass $operation
+     * @return PUMCHOperationInfo
      */
-    function generateChangeMessage() {
-        $itemCodes = [];
-        if (!$this->hasChanges()) {
-            return null;
-        }
-
-        // Check changes in operations
-        if (count($this->newProcedures) > 0) {
-            // New procedures added
-            $itemCodes[] = 'OPERATION_NEW';
-        } else {
-            foreach ($this->getProcedures() as $proc) {
-                if ($proc->hasChanges()) {
-                    $itemCodes[] = 'OPERATION_UPDATE';
-                    break;
-                }
-            }
-        }
-
-        // Check changes in discharge information
-        if ($this->operationPosition && array_key_exists('dischargeTime', $this->changeList) && isNullOrEmpty($this->changeList['dischargeTime'])) {
-            // Discharge information has been added
-            $itemCodes[] = 'DISCHARGE_NEW';
-        } else {
-            $fieldsToCheck = ['dischargeDept', 'dischargeDiag', 'dischargeInstructions', 'dischargeSituation', 'dischargeStatus', 'dischargeTime'];
-            foreach ($fieldsToCheck as $fName) {
-                if (array_key_exists($fName, $this->changeList)) {
-                    $itemCodes[] = 'DISCHARGE_UPDATE';
-                    break;
-                }
-            }
-        }
-
-        foreach ($itemCodes as $itemCode) {
-            $messages[] = "@TASK{PCI_DCH_LITERALS}.FORM{PCI_DCH_EPISODE_UPDATE_MSGS}.ITEM{" . $itemCode . "}.TITLE";
-        }
-
-        return implode("\n", $messages);
-    }
-
-    /**
-     * Creates a PUMCHEpisodeInfo object from the information received from the PUMCH hospital
-     *
-     * @param stdClass $episodeOperations
-     * @return PUMCHEpisodeInfo
-     */
-    static function fromJson($episodeOperations) {
-        $patientInfo = new PUMCHEpisodeInfo();
-        if (empty($episodeOperations)) {
+    static function fromJson($operation) {
+        $patientInfo = new PUMCHOperationInfo();
+        if (empty($operation)) {
             return $patientInfo;
-        }
-        if (!is_array($episodeOperations)) {
-            $episodeOperations = [$episodeOperations];
         }
 
         /* This is the first time that we create the object, so it is not necessary to track the changes */
         $patientInfo->trackChanges = false;
-        $patientInfo->update($episodeOperations);
+        $patientInfo->update($operation);
         /* From this moment we want to track the changes in any of the object properties */
         $patientInfo->trackChanges = true;
 
