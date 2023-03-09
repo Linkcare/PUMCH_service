@@ -20,13 +20,13 @@ class PUMCHOperationInfo {
     /** @var string*/
     private $operationId;
     /** @var string*/
-    private $deptStayed;
+    private $deptCode;
     /** @var string*/
-    private $department;
+    private $deptName;
     /** @var string*/
     private $bedNo;
-    /** @var string*/
-    private $operationName;
+    /** @var string[] */
+    private $procedures = [];
     /** @var string*/
     private $operatingRoomNo;
     /** @var string*/
@@ -143,8 +143,8 @@ class PUMCHOperationInfo {
      *
      * @return string
      */
-    public function getDeptStayed() {
-        return $this->deptStayed;
+    public function getDeptCode() {
+        return $this->deptCode;
     }
 
     /**
@@ -152,8 +152,8 @@ class PUMCHOperationInfo {
      *
      * @return string
      */
-    public function getDepartment() {
-        return $this->department;
+    public function getDeptName() {
+        return $this->deptName;
     }
 
     /**
@@ -166,12 +166,12 @@ class PUMCHOperationInfo {
     }
 
     /**
-     * Name of the operation
+     * List of procedures of the operation
      *
-     * @return string
+     * @return string[]
      */
-    public function getOperationName() {
-        return $this->operationName;
+    public function getProcedures() {
+        return $this->procedures;
     }
 
     /**
@@ -497,8 +497,8 @@ class PUMCHOperationInfo {
      *
      * @param string $value
      */
-    public function setDeptStayed($value) {
-        $this->assignAndTrackPropertyChange('deptStayed', $value);
+    public function setDeptCode($value) {
+        $this->assignAndTrackPropertyChange('deptCode', $value);
     }
 
     /**
@@ -506,8 +506,8 @@ class PUMCHOperationInfo {
      *
      * @param string $value
      */
-    public function setDepartment($value) {
-        $this->assignAndTrackPropertyChange('department', $value);
+    public function setDeptName($value) {
+        $this->assignAndTrackPropertyChange('deptName', $value);
     }
 
     /**
@@ -520,12 +520,12 @@ class PUMCHOperationInfo {
     }
 
     /**
-     * Name of the operation
+     * Add a new procedure name to the operation
      *
      * @param string $value
      */
-    public function setOperationName($value) {
-        $this->assignAndTrackPropertyChange('operationName', $value);
+    public function addProcedure($value) {
+        $this->procedures[] = $value;
     }
 
     /**
@@ -808,33 +808,41 @@ class PUMCHOperationInfo {
             throw new ServiceException(ErrorCodes::DATA_MISSING, 'Operation ' . $operation->scheduled . ' arrived without Operation Id');
         }
 
-        $this->setCrmId($operation->crm_id);
+        $this->setCrmId($operation->crmID);
         $this->setPatientId($operation->patientID);
         $this->setEpisodeId($operation->inpatientID);
         $this->setOperationId($operation->scheduled);
-        $this->setDeptStayed($operation->deptstayed);
-        $this->setDepartment($operation->department);
-        $this->setBedNo($operation->bedNo);
-        $this->setOperatingRoomNo($operation->operatingroomno);
-        $this->setOperatingDatetime($operation->operatingdatetime);
-        $this->setDiagBeforeOperation($operation->diagbeforeoperation);
-        $this->setEmergencyIndicator($operation->emergencyindicator);
-        $this->setSurgeonName($operation->surgeonname);
+        $this->setDeptCode($operation->deptCode);
+        $this->setDeptName($operation->deptName);
+        $this->setBedNo($operation->bedNO);
+        $this->setOperatingRoomNo($operation->operatingRoomNO);
+        $this->setOperatingDatetime($operation->operatingDatetime);
+        $this->setDiagBeforeOperation($operation->diagBeforeOperation);
+        $this->setEmergencyIndicator($operation->emergencyIndicator);
+        $this->setSurgeonName($operation->surgeonName);
         // $this->setSurgeonCode($lastOperation->surgeon); // Currently we are not receiving the surgeon code
-        $this->setSurgeonName1($operation->surgeonname1);
+        $this->setSurgeonName1($operation->surgeonName1);
         // $this->setSurgeonCode1($lastOperation->surgeon1); // Currently we are not receiving the surgeon code assistant
 
-        $this->setAnesthesiaDoctorName($operation->anesthesiadoctorname);
-        $this->setAnesthesiaDoctorCode($operation->anesthesiadoctor);
-        $this->setAnesthesiaDoctorName2($operation->anesthesiadoctorname2);
-        $this->setAnesthesiaDoctorCode2($operation->anesthesiadoctor2);
-        $this->setAnesthesiaDoctorName3($operation->anesthesiadoctorname3);
-        $this->setAnesthesiaDoctorCode3($operation->anesthesiadoctor3);
-        $this->setAnesthesiaDoctorName4($operation->anesthesiadoctorname4);
-        $this->setAnesthesiaDoctorCode4($operation->anesthesiaDoctor4);
+        $this->setAnesthesiaDoctorName($operation->anesthesiaDoctorName);
+        $this->setAnesthesiaDoctorCode($operation->anesthesiaDoctorNO);
+        $this->setAnesthesiaDoctorName2($operation->anesthesiaDoctorName2);
+        $this->setAnesthesiaDoctorCode2($operation->anesthesiaDoctorNO2);
+        $this->setAnesthesiaDoctorName3($operation->anesthesiaDoctorName3);
+        $this->setAnesthesiaDoctorCode3($operation->anesthesiaDoctorNO3);
+        $this->setAnesthesiaDoctorName4($operation->anesthesiaDoctorName4);
+        $this->setAnesthesiaDoctorCode4($operation->anesthesiaDoctorNO4);
         $this->setAnesthesiaMethod($operation->anesthesiaMethod);
         $this->setOperationPosition($operation->operationPosition);
-        $this->setOperationName($operation->operationName);
+        if (isset($operation->operationName)) {
+            if (is_scalar($operation->operationName)) {
+                $this->addProcedure($operation->operationName);
+            } else {
+                foreach ($operation->operationName as $procName) {
+                    $this->addProcedure($procName);
+                }
+            }
+        }
         $this->setName($operation->name);
         $this->setSex($operation->sex);
         $this->setAge($operation->age);
@@ -845,8 +853,8 @@ class PUMCHOperationInfo {
         $this->setIdCardType($operation->idType);
         $this->setIdCard($operation->idCard);
         $this->setBirthday($operation->birthDay);
-        $this->setCreateDateTime($operation->createDateTime ?? $this->getOperatingDatetime());
-        $this->setUpdateDateTime($operation->lastUpdateDateTime ?? $this->getCreateDateTime());
+        $this->setCreateDateTime($operation->createDatetime ?? $this->getOperatingDatetime());
+        $this->setUpdateDateTime($operation->lastUpdateDatetime ?? $this->getCreateDateTime());
     }
 
     /**
@@ -855,7 +863,7 @@ class PUMCHOperationInfo {
      * @return boolean
      */
     public function hasChanges() {
-        if (count($this->changeList) > 0 || count($this->newProcedures) > 0) {
+        if (count($this->changeList) > 0) {
             return true;
         }
         return false;

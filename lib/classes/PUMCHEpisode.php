@@ -327,7 +327,7 @@ class PUMCHEpisode {
             throw new ServiceException(ErrorCodes::DATA_MISSING, 'Operation ' . $lastOperation->scheduled . ' arrived without episode Id (inpatientID)');
         }
 
-        $this->setCrmId($lastOperation->crm_id);
+        $this->setCrmId($lastOperation->crmID);
         $this->setPatientId($lastOperation->patientID);
         $this->setEpisodeId($lastOperation->inpatientID);
         $this->setName($lastOperation->name);

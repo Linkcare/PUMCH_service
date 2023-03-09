@@ -21,7 +21,11 @@ $GLOBALS['SERVICE_TEAM'] = 'PUMCH';
 $GLOBALS['LANGUAGE'] = 'ZH';
 
 /* Endpoint URL of the PUMCH API */
-$GLOBALS['PUMCH_API_URL'] = 'https://hcrm.pumch.cn/dataapi';
+$GLOBALS['PUMCH_API_URL'] = 'https://hcrm.pumch.cn';
+/* API Username */
+$GLOBALS['PUMCH_API_USERNAME'] = 'linkcare';
+/* API Password */
+$GLOBALS['PUMCH_API_PASSWORD'] = 'linkcare_password';
 
 /* Program code of the Subscription to store the information about the episodes received from PUMCH */
 $GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'] = 'PUMCH_ADMISSIONS';

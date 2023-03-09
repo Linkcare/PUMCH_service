@@ -929,11 +929,10 @@ class ServiceFunctions {
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::PATIENT_ID, $operation->getPatientId());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::INPATIENT_ID, $operation->getEpisodeId());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPERATION_ID, $operation->getOperationId());
-        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::DEPT_STAYED, $operation->getDeptStayed());
-        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::DEPARTMENT, $operation->getDepartment());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::DEPT_CODE, $operation->getDeptCode());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::DEPT_NAME, $operation->getDeptName());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::BED_NO, $operation->getBedNo());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPERATING_ROOM_NO, $operation->getOperatingRoomNo());
-        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPERATION_NAME, $operation->getOperationName());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPERATING_DATETIME, $operation->getOperatingDatetime());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::DIAG_BEFORE, $operation->getDiagBeforeOperation());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::EMERGENCY_INDICATOR,
@@ -967,6 +966,19 @@ class ServiceFunctions {
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OUT_ROOM_DATETIME, $operation->getoutRoomDatetime());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPER_STATUS, $operation->getOperStatus());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::LAST_UPDATE, $operation->getUpdateDateTime());
+
+        // Procedure information stored as a table (1 row)
+        $ix = 1;
+        $procedures = $operation->getProcedures();
+        if (!empty($procedures) && ($arrayHeader = $operationForm->findQuestion(PUMCHItemCodes::PROCEDURE_TABLE)) &&
+                $arrayHeader->getType() == APIQuestion::TYPE_ARRAY) {
+            foreach ($procedures as $procedureName) {
+                $arrQuestions[] = $this->updateArrayTextQuestionValue($operationForm, $arrayHeader->getId(), $ix, PUMCHItemCodes::OPERATION_NAME,
+                        $procedureName);
+
+                $ix++;
+            }
+        }
 
         // Remove null entries
         $arrQuestions = array_filter($arrQuestions);
