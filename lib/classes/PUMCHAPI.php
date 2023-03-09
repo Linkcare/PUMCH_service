@@ -10,6 +10,8 @@ class PUMCHAPI {
     private $delay;
     private $lastRequestTime = 0;
     private static $cache = [];
+    private $httpStatus;
+    private $httpMessage;
 
     private function __construct($username, $password, $endpoint, $timeout = null) {
         $this->username = $username;
@@ -112,6 +114,7 @@ class PUMCHAPI {
      */
     private function invokeAPI($function, $params, $headers = null, $sendAsJson = true, $usePOST = false) {
         $this->httpStatus = null;
+        $this->httpMessage = null;
 
         $endpoint = $this->endpoint . $function;
         $errorMsg = null;
@@ -154,9 +157,10 @@ class PUMCHAPI {
         if ($errorMsg) {
             throw new ServiceException(ErrorCodes::API_COMM_ERROR, $errorMsg);
         }
-        if (!$APIResponse && !startsWith('2', $this->httpStatus)) {
+        if (!startsWith('2', $this->httpStatus)) {
             // The did not provide any information but responded with an HTTP error status
-            throw new ServiceException(ErrorCodes::API_ERROR_STATUS, $this->httpStatus);
+            throw new ServiceException(ErrorCodes::API_ERROR_STATUS, $this->httpStatus . ' ' . $this->httpMessage . ' (Endpoint: ' . $this->endpoint .
+                    $function . ')');
         }
         return $this->parseAPIResponse($APIResponse);
     }
@@ -170,8 +174,9 @@ class PUMCHAPI {
      */
     function handleHeaderLine($curl, $header_line) {
         $matches = null;
-        if (preg_match('/^HTTP[^\s]*\s(\d+)*/', $header_line, $matches)) {
+        if (preg_match('/^HTTP[^\s]*\s(\d+)(.*)/', $header_line, $matches)) {
             $this->httpStatus = $matches[1];
+            $this->httpMessage = $matches[2];
         }
         return strlen($header_line);
     }
