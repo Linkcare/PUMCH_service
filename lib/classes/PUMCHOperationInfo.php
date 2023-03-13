@@ -10,6 +10,7 @@ class PUMCHOperationInfo {
      */
     private $trackChanges = true;
     private $changeList = [];
+    private $proceduresChanged;
 
     /** @var string*/
     private $crmId;
@@ -25,7 +26,7 @@ class PUMCHOperationInfo {
     private $deptName;
     /** @var string*/
     private $bedNo;
-    /** @var string[] */
+    /** @var PUMCHProcedure[] */
     private $procedures = [];
     /** @var string*/
     private $operatingRoomNo;
@@ -168,7 +169,7 @@ class PUMCHOperationInfo {
     /**
      * List of procedures of the operation
      *
-     * @return string[]
+     * @return PUMCHProcedure[]
      */
     public function getProcedures() {
         return $this->procedures;
@@ -522,10 +523,19 @@ class PUMCHOperationInfo {
     /**
      * Add a new procedure name to the operation
      *
-     * @param string $value
+     * @param PUMCHProcedure $procedure
      */
-    public function addProcedure($value) {
-        $this->procedures[] = $value;
+    public function addProcedure($procedure) {
+        foreach ($this->procedures as $p) {
+            if ($p->getOperationCode() == $procedure->getOperationCode()) {
+                // The operation is already in the list
+                return;
+            }
+        }
+        if ($this->trackChanges) {
+            $this->proceduresChanged = true;
+        }
+        $this->procedures[] = $procedure;
     }
 
     /**
@@ -834,13 +844,9 @@ class PUMCHOperationInfo {
         $this->setAnesthesiaDoctorCode4($operation->anesthesiaDoctorNO4);
         $this->setAnesthesiaMethod($operation->anesthesiaMethod);
         $this->setOperationPosition($operation->operationPosition);
-        if (isset($operation->operationName)) {
-            if (is_scalar($operation->operationName)) {
-                $this->addProcedure($operation->operationName);
-            } else {
-                foreach ($operation->operationName as $procName) {
-                    $this->addProcedure($procName);
-                }
+        if (isset($operation->operationList)) {
+            foreach ($operation->operationList as $procedure) {
+                $this->addProcedure(PUMCHProcedure::fromJson($procedure));
             }
         }
         $this->setName($operation->name);
@@ -863,7 +869,7 @@ class PUMCHOperationInfo {
      * @return boolean
      */
     public function hasChanges() {
-        if (count($this->changeList) > 0) {
+        if (count($this->changeList) > 0 || $this->proceduresChanged) {
             return true;
         }
         return false;

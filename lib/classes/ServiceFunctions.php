@@ -972,9 +972,11 @@ class ServiceFunctions {
         $procedures = $operation->getProcedures();
         if (!empty($procedures) && ($arrayHeader = $operationForm->findQuestion(PUMCHItemCodes::PROCEDURE_TABLE)) &&
                 $arrayHeader->getType() == APIQuestion::TYPE_ARRAY) {
-            foreach ($procedures as $procedureName) {
+            foreach ($procedures as $p) {
+                $arrQuestions[] = $this->updateArrayTextQuestionValue($operationForm, $arrayHeader->getId(), $ix, PUMCHItemCodes::OPERATION_CODE,
+                        $p->getOperationCode());
                 $arrQuestions[] = $this->updateArrayTextQuestionValue($operationForm, $arrayHeader->getId(), $ix, PUMCHItemCodes::OPERATION_NAME,
-                        $procedureName);
+                        $p->getOperationName());
 
                 $ix++;
             }

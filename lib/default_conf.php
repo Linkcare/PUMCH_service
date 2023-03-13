@@ -138,6 +138,7 @@ require_once 'classes/ServiceLogger.php';
 require_once 'classes/ErrorCodes.php';
 require_once 'classes/ServiceException.php';
 require_once 'classes/PUMCHItemCodes.php';
+require_once 'classes/PUMCHProcedure.php';
 require_once 'classes/PUMCHOperationInfo.php';
 require_once 'classes/PUMCHEpisode.php';
 require_once 'classes/PUMCHAPI.php';
