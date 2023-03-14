@@ -51,6 +51,10 @@ class ServiceFunctions {
              */
             $fromDate = $GLOBALS['MINIMUM_DATE'];
         }
+        if ($fromDate) {
+            // use only the date part
+            $fromDate = explode(' ', $fromDate)[0];
+        }
 
         try {
             $operationsFetched = $this->apiPUMCH->requestPatientList($fromDate);
