@@ -21,9 +21,9 @@ class PUMCHOperationInfo {
     /** @var string*/
     private $operationId;
     /** @var string*/
-    private $deptCode;
-    /** @var string*/
     private $deptName;
+    /** @var string*/
+    private $deptWard;
     /** @var string*/
     private $bedNo;
     /** @var PUMCHProcedure[] */
@@ -140,21 +140,21 @@ class PUMCHOperationInfo {
     }
 
     /**
-     * Inpatient department code
-     *
-     * @return string
-     */
-    public function getDeptCode() {
-        return $this->deptCode;
-    }
-
-    /**
-     * Inpatient department name (ward)
+     * Inpatient department name
      *
      * @return string
      */
     public function getDeptName() {
         return $this->deptName;
+    }
+
+    /**
+     * Inpatient ward
+     *
+     * @return string
+     */
+    public function getDeptWard() {
+        return $this->deptWard;
     }
 
     /**
@@ -494,21 +494,21 @@ class PUMCHOperationInfo {
     }
 
     /**
-     * Inpatient department code
-     *
-     * @param string $value
-     */
-    public function setDeptCode($value) {
-        $this->assignAndTrackPropertyChange('deptCode', $value);
-    }
-
-    /**
-     * Inpatient department name (ward)
+     * Inpatient department name
      *
      * @param string $value
      */
     public function setDeptName($value) {
         $this->assignAndTrackPropertyChange('deptName', $value);
+    }
+
+    /**
+     * Inpatient ward
+     *
+     * @param string $value
+     */
+    public function setDeptWard($value) {
+        $this->assignAndTrackPropertyChange('deptWard', $value);
     }
 
     /**
@@ -822,8 +822,8 @@ class PUMCHOperationInfo {
         $this->setPatientId($operation->patientID);
         $this->setEpisodeId($operation->inpatientID);
         $this->setOperationId($operation->scheduled);
-        $this->setDeptCode($operation->deptCode);
         $this->setDeptName($operation->deptName);
+        $this->setDeptWard($operation->deptWard);
         $this->setBedNo($operation->bedNO);
         $this->setOperatingRoomNo($operation->operatingRoomNO);
         $this->setOperatingDatetime($operation->operatingDatetime);

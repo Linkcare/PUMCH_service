@@ -6,8 +6,8 @@ class PUMCHItemCodes {
     const PATIENT_ID = 'PATIENT_ID';
     const INPATIENT_ID = 'INPATIENT_ID';
     const OPERATION_ID = 'OPERATION_ID';
-    const DEPT_CODE = 'DEPARTMENT_CODE';
-    const DEPT_NAME = 'INPATIENT_DEPARTMENT';
+    const DEPT_NAME = 'DEPARTMENT_NAME';
+    const DEPT_WARD = 'INPATIENT_WARD';
     const BED_NO = 'BED_NUM';
     const PROCEDURE_TABLE = 'PROC_TABLE';
     const OPERATION_CODE = 'OPERATION_CODE';

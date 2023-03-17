@@ -12,6 +12,10 @@ class ServiceFunctions {
     /** @var APIUser[] List of professionals cached in memory */
     private $professionals = [];
 
+    /** @var APISubscription[] List of subscriptions cached in memory */
+    private $cachedSubscriptions = [];
+    private $failedSubscriptions = [];
+
     /* Other Constants */
     const PATIENT_HISTORY_TASK_CODE = 'PUMCH_IMPORT';
     const OPERATION_FORM_CODE = 'PUMCH_IMPORT_FORM';
@@ -131,24 +135,10 @@ class ServiceFunctions {
         // Verify the existence of the required SUBSCRIPTIONS
         try {
             // Locate the SUBSCRIPTION for storing episode information
-            $kxEpisodesSubscription = $this->apiLK->subscription_get($GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'], $GLOBALS['PUMCH_EPISODES_TEAM_CODE']);
+            $kxEpisodesSubscription = $this->loadSubscription($GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'], $GLOBALS['PUMCH_EPISODES_TEAM_CODE']);
         } catch (Exception $e) {
             $serviceResponse->setCode(ServiceResponse::ERROR);
-            $serviceResponse->setMessage(
-                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['PUMCH_EPISODES_PROGRAM_CODE'] . ', Team: ' .
-                    $GLOBALS['PUMCH_EPISODES_TEAM_CODE'] . ') FOR IMPORTING PATIENTS: ' . $e->getMessage());
-            $processHistory->addLog($serviceResponse->getMessage());
-            return $serviceResponse;
-        }
-
-        try {
-            // Locate the SUBSCRIPTION of the "Day Surgery" PROGRAM for creating new ADMISSIONS of a patient
-            $daySurgerySubscription = $this->apiLK->subscription_get($GLOBALS['DAY_SURGERY_PROGRAM_CODE'], $GLOBALS['DAY_SURGERY_TEAM_CODE']);
-        } catch (Exception $e) {
-            $serviceResponse->setCode(ServiceResponse::ERROR);
-            $serviceResponse->setMessage(
-                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['DAY_SURGERY_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['DAY_SURGERY_TEAM_CODE'] .
-                    ') FOR DAY SURGERY PATIENTS: ' . $e->getMessage());
+            $serviceResponse->setMessage($e->getMessage());
             $processHistory->addLog($serviceResponse->getMessage());
             return $serviceResponse;
         }
@@ -224,7 +214,7 @@ class ServiceFunctions {
                         'Importing operations for episode ' . sprintf('%03d', $processed) . ': ' . $episodeInfo->getName() . ' (Patient Id: ' .
                         $episodeInfo->getPatientId() . ', Episode Id: ' . $episodeInfo->getEpisodeId() . ')', 1);
                 try {
-                    $this->importIntoPHM($episodeInfo, $kxEpisodesSubscription, $daySurgerySubscription);
+                    $this->importIntoPHM($episodeInfo, $kxEpisodesSubscription);
                     $success[] = $episodeInfo;
                     foreach ($episodeOperationRecords as $record) {
                         // Preserve the informat¡on successfully imported so that we can track changes when updated information is received
@@ -295,11 +285,11 @@ class ServiceFunctions {
 
         try {
             // Locate the SUBSCRIPTION of the "Day Surgery" PROGRAM for creating new ADMISSIONS of a patient
-            $daySurgerySubscription = $this->apiLK->subscription_get($GLOBALS['DAY_SURGERY_PROGRAM_CODE'], $GLOBALS['DAY_SURGERY_TEAM_CODE']);
+            $daySurgerySubscription = $this->apiLK->subscription_get($GLOBALS['DAY_SURGERY_PROGRAM_CODE'], $GLOBALS['DAY_SURGERY_TEAM_CODES']);
         } catch (Exception $e) {
             $serviceResponse->setCode(ServiceResponse::ERROR);
             $serviceResponse->setMessage(
-                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['DAY_SURGERY_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['DAY_SURGERY_TEAM_CODE'] .
+                    'ERROR LOADING SUBSCRIPTION (Care plan: ' . $GLOBALS['DAY_SURGERY_PROGRAM_CODE'] . ', Team: ' . $GLOBALS['DAY_SURGERY_TEAM_CODES'] .
                     ') FOR DAY SURGERY PATIENTS: ' . $e->getMessage());
             $processHistory->addLog($serviceResponse->getMessage());
             return $serviceResponse;
@@ -420,9 +410,8 @@ class ServiceFunctions {
      *
      * @param PUMCHEpisode $episodeInfo
      * @param APISubscription $episodeSubscription
-     * @param APISubscription $daySurgerySubscription
      */
-    private function importIntoPHM($episodeInfo, $episodeSubscription, $daySurgerySubscription) {
+    private function importIntoPHM($episodeInfo, $episodeSubscription) {
         $errMsg = '';
         $errCode = null;
 
@@ -445,9 +434,8 @@ class ServiceFunctions {
             throw new ServiceException($errCode, $errMsg);
         }
 
-        // Create a new Admission for the patient or find the existing one
         try {
-            // Check whether the Admission already exists
+            // Create a new Admission for the patient or find the existing one in the care plan PUMCH_ADMISSIONS
             $admission = $this->findAdmission($patient, $episodeInfo, $episodeSubscription);
             if (!$admission) {
                 ServiceLogger::getInstance()->debug('Creating new Admission for patient in PUMCH Admissions care plan', 2);
@@ -495,14 +483,17 @@ class ServiceFunctions {
             $isNewDaySurgeryAdmission = false;
             $daySurgeryAdmission = null;
 
-            /*
-             * Create or update an associate ADMISSION in the "DAY SURGERY" Care Plan
-             * Currently only one ADMISSION can be active in a Care Plan for the same patient, so, when the patient has more than one operation, we
-             * will only create an ADMISSION for the last operation
-             */
-            /** @var PUMCHOperationInfo $operation */
-            $lastOperation = end($episodeInfo->getOperations());
-            if ($lastOperation) {
+            /* Create or update an ADMISSION in the "DAY SURGERY" Care Plan for each operation */
+            foreach ($episodeInfo->getOperations() as $operation) {
+                if (!array_key_exists($operation->getDeptName(), $GLOBALS['DAY_SURGERY_TEAM_CODES'])) {
+                    $msg = 'No TEAM configured for the department code: ' . $operation->getDeptName() . '. Cannot find the subscription for care plan ' .
+                            $GLOBALS['DAY_SURGERY_PROGRAM_CODE'];
+                    ServiceLogger::getInstance()->debug($msg, 2);
+                    throw new ServiceException(ErrorCodes::CONFIG_ERROR, $msg);
+                }
+                $teamCode = $GLOBALS['DAY_SURGERY_TEAM_CODES'][$operation->getDeptName()];
+                // Find Subscription to create the Admission
+                $daySurgerySubscription = $this->loadSubscription($GLOBALS['DAY_SURGERY_PROGRAM_CODE'], $teamCode);
                 $operationForm = $operationForms[$operation->getOperationId()];
                 if (!$isNewEpisode) {
                     $daySurgeryAdmission = $this->findDaySurgeryAdmission($operation->getInRoomDatetime(), $operationForm, $patient,
@@ -538,6 +529,37 @@ class ServiceFunctions {
     /**
      * ******************************** INTERNAL FUNCTIONS *********************************
      */
+    /**
+     * Loads the information of a Subscription (defined by the combination of a Program Code and a Team Code)
+     *
+     * @param string $programCode
+     * @param string $teamCode
+     * @throws APIException
+     * @return APISubscription
+     */
+    public function loadSubscription($programCode, $teamCode) {
+        $key = $programCode . '/' . $teamCode;
+        if (array_key_exists($key, $this->failedSubscriptions)) {
+            // We tried before to load this subscription, and an error happened. No need to try again
+            throw $this->failedSubscriptions[$key];
+        }
+
+        try {
+            // Locate the SUBSCRIPTION of the "Day Surgery" PROGRAM for creating new ADMISSIONS of a patient
+            if (array_key_exists($key, $this->cachedSubscriptions)) {
+                $subscription = $this->cachedSubscriptions[$key];
+            } else {
+                $subscription = $this->apiLK->subscription_get($programCode, $teamCode);
+                $this->cachedSubscriptions[$key] = $subscription;
+            }
+        } catch (Exception $e) {
+            $exception = new APIException($e->getCode(), "ERROR LOADING SUBSCRIPTION (Care plan: $programCode, Team: $teamCode): " . $e->getMessage());
+            $this->failedSubscriptions[$key] = $exception;
+            throw $exception;
+        }
+
+        return $subscription;
+    }
 
     /**
      * Creates a new patient (or updates it if already exists) in Linkcare database using as reference the information in $importInfo
@@ -933,8 +955,8 @@ class ServiceFunctions {
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::PATIENT_ID, $operation->getPatientId());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::INPATIENT_ID, $operation->getEpisodeId());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPERATION_ID, $operation->getOperationId());
-        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::DEPT_CODE, $operation->getDeptCode());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::DEPT_NAME, $operation->getDeptName());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::DEPT_WARD, $operation->getDeptWard());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::BED_NO, $operation->getBedNo());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPERATING_ROOM_NO, $operation->getOperatingRoomNo());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPERATING_DATETIME, $operation->getOperatingDatetime());

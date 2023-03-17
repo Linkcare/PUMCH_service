@@ -24,4 +24,7 @@ class ErrorCodes {
 
     /** @var string Required data does not exist */
     const DATA_MISSING = 'DATA_MISSING';
+
+    /** @var string Incorrect configuration of the service */
+    const CONFIG_ERROR = 'CONFIG_ERROR';
 }

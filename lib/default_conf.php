@@ -37,8 +37,8 @@ $GLOBALS['PUMCH_EPISODES_TEAM_CODE'] = 'PUMCH';
  * SUBSCRIPTION. The goal is to let a Case Manager decide whether the patient must be enrolled in any Post Intervention Follow-up PROGRAM
  */
 $GLOBALS['DAY_SURGERY_PROGRAM_CODE'] = 'DSFU';
-/* Team code of the DAY SURGERY Subscription owner */
-$GLOBALS['DAY_SURGERY_TEAM_CODE'] = 'PUMCH';
+/* Team code of the DAY SURGERY Subscription owner, classified by Department Name */
+$GLOBALS['DAY_SURGERY_TEAM_CODES'] = [];
 
 /*
  * Day interval to reject ADMISSIONS that have status 'enrolled' in the "DAY SURGERY FOLLOW UP" PROGRAM but discharged in the "PUMCH EPISODES"
