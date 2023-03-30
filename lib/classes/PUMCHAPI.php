@@ -68,7 +68,7 @@ class PUMCHAPI {
             $params = [];
             $params['opdatetime'] = $fromDate;
             $headers[] = 'token: ' . $token;
-            $resp = $this->invokeAPI('xhdataapi/queryOperationXyqData', $params, $headers, false);
+            $resp = $this->invokeAPI('xhdataapi/queryOperationXyqData', $params, $headers, false, true);
             if (is_array($resp) && $GLOBALS['ANONYMIZE_DATA']) {
                 foreach ($resp as $info) {
                     self::anonymizeOperationData($info);
