@@ -950,7 +950,7 @@ class ServiceFunctions {
         }
 
         $arrQuestions = [];
-        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::LAST_IMPORT, currentDate());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::LAST_IMPORT, currentDate($GLOBALS['DEFAULT_TIMEZONE']));
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::CRM_ID, $operation->getCrmId());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::PATIENT_ID, $operation->getPatientId());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::INPATIENT_ID, $operation->getEpisodeId());
