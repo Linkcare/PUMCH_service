@@ -8,10 +8,10 @@ class DbManagerOracle extends DbManager {
     /** @var DbError */
     private $error;
     public $should_commit;
-    private $Port = '1521';
 
     function __construct() {
         $this->should_commit = true;
+        $this->Port = 1521;
     }
 
     function setURI($uri) {

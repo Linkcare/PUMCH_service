@@ -2,6 +2,7 @@
 
 class DbManager {
     var $Host;
+    var $Port;
     var $User;
     var $Passwd;
     var $Database;
@@ -9,6 +10,14 @@ class DbManager {
     var $asSysDba = false;
 
     function SetHost($inputHost) {
+        if ($inputHost) {
+            // Check whether the Host name has concatenated the port number
+            $parts = explode(':', $inputHost);
+            if (count($parts) > 1 && is_numeric($parts[1])) {
+                $this->Port = $parts[1];
+                $inputHost = $parts[0];
+            }
+        }
         $this->Host = $inputHost;
     }
 
