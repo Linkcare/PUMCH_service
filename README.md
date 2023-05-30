@@ -32,3 +32,11 @@ The possible response status are:
 - <b>import_patients</b>: Creates or updates a new Admission for each record fetched from the Hospital in a Care Plan that is a mirror of the Episodes in the Hospital HIS. Additionally it creates an admission in a DAY SURGERY Care Plan if necessary.
 - <b>review_day_surgery_enrolled</b>: Checks whether the Admissions created in the DAY SURGERY Care Plan must be automatically rejected. An Admission should be rejected if it still has status "ENROLLED" since a number of days that can be set in the service configuration.
 - <b>fetch_and_import</b>: This function is a shortcut to execute succesively the functions "fetch_pumch_records" and "import_patients" in a single call
+
+## Version history
+1.0 (2023-04-06)
+- Initial version 
+
+1.1 (2023-05-30)
+- Added login page
+- Added new parameter to define which Surgery Departments should be ignored to not create an ADMISSION in the "Day Surgery Followup" care plan
