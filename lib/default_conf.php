@@ -9,6 +9,13 @@ session_start();
 /**
  * ** REQUIRED CONFIGURATION PARAMETERS ***
  */
+/* Administrator username for accessing to the status page of the service */
+$GLOBALS['SUPERADMIN_USER'] = 'pumch';
+/* Administrator password for accessing to the status page of the service */
+$GLOBALS['SUPERADMIN_PASSWORD'] = 'pumch';
+/* Expiration time (in seconds) of the session initiated in the status page of the service */
+$GLOBALS['SUPERADMIN_SESSION_EXPIRE'] = 300;
+
 /* Url of the Linkcare API */
 $GLOBALS['WS_LINK'] = 'https://api.linkcareapp.com/ServerWSDL.php';
 
@@ -37,8 +44,14 @@ $GLOBALS['PUMCH_EPISODES_TEAM_CODE'] = 'PUMCH';
  * SUBSCRIPTION. The goal is to let a Case Manager decide whether the patient must be enrolled in any Post Intervention Follow-up PROGRAM
  */
 $GLOBALS['DAY_SURGERY_PROGRAM_CODE'] = 'DSFU';
-/* Team code of the DAY SURGERY Subscription owner, classified by Department Name */
+/*
+ * Associative array with the TEAM CODEs of the DAY SURGERY Subscription owner. The key of each item should be the department name (as it is received
+ * from the PUMCH API) and the item value is the associated TEAM CODE.
+ * Example: ['日间口腔科(西院)' => 'PUMCH_DENTISTY', '日间基本外科(西院)' => 'PUMCH_BASIC_SURGERY']
+ */
 $GLOBALS['DAY_SURGERY_TEAM_CODES'] = [];
+/* Array of surgery department names that should only create an ADMISSION in the PUMCH ADMISIONS care plan, but not in the DAY SURGERY care plan. */
+$GLOBALS['IGNORE_DEPT_NAMES'] = [];
 
 /*
  * Day interval to reject ADMISSIONS that have status 'enrolled' in the "DAY SURGERY FOLLOW UP" PROGRAM but discharged in the "PUMCH EPISODES"
@@ -160,4 +173,4 @@ date_default_timezone_set($GLOBALS['DEFAULT_TIMEZONE']);
 $GLOBALS['PATIENT_IDENTIFIER'] = 'PARTICIPANT_REF';
 $GLOBALS['PROFESSIONAL_IDENTIFIER'] = 'EMPLOYEE_REF';
 
-$GLOBALS['VERSION'] = '1.0';
+$GLOBALS['VERSION'] = '1.1';

@@ -1,7 +1,7 @@
 Options -Indexes
 Deny from all
 
-<FilesMatch "(index.php|.(css|js|ttf|svg|eot|woff|woff2)$|fonts/*|js/*|rest_service\.php|rest_service|service_status.php|deploy_service.php|debug_rest.php)$">
+<FilesMatch "(index.php|.(map|css|js|ttf|svg|eot|woff|woff2)$|fonts/*|js/*|rest_service\.php|rest_service|service_status.php|deploy_service.php|debug_rest.php)$">
 Order Deny,Allow
    Allow from all
 </FilesMatch>

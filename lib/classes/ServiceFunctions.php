@@ -109,7 +109,7 @@ class ServiceFunctions {
 
             // Save progress log
             $progress = round(100 * ($maxRecords ? $processed / $maxRecords : 1), 1);
-            $outputMessage = "Processed from $fromDate: $processed ($progress%), New: $newRecords, Updated: $updatedRecords, Ignored: $ignoredRecords, Failed: $importFailed";
+            $outputMessage = "Operations processed from $fromDate: $processed ($progress%), New: $newRecords, Updated: $updatedRecords, Ignored: $ignoredRecords, Failed: $importFailed";
             $processHistory->setOutputMessage($outputMessage);
             $processHistory->save();
         }
@@ -118,7 +118,7 @@ class ServiceFunctions {
             $serviceResponse->setCode($serviceResponse::ERROR);
         }
 
-        $outputMessage = "Processed from $fromDate: $processed ($progress%), New: $newRecords, Updated: $updatedRecords, Ignored: $ignoredRecords, Failed: $importFailed";
+        $outputMessage = "Operations processed from $fromDate: $processed ($progress%), New: $newRecords, Updated: $updatedRecords, Ignored: $ignoredRecords, Failed: $importFailed";
         $serviceResponse->setMessage($outputMessage);
         return $serviceResponse;
     }
@@ -151,14 +151,16 @@ class ServiceFunctions {
         $page = 1;
         $pageSize = $GLOBALS['PATIENT_PAGE_SIZE'];
         $processed = 0;
+        $numOperations = 0;
         $importFailed = [];
         $success = [];
-        $totalExpectedEpisodes = RecordPool::countTotalChanged();
         ServiceLogger::getInstance()->debug('Process a maximum of: ' . $MaxEpisodes . ' episodes');
 
         // Reset import errors from previous executions and try to process again
         RecordPool::resetErrors();
+        $totalExpectedEpisodes = RecordPool::countTotalChanged();
 
+        $ignoredDepartments = [];
         // Start process loop
         while ($processed < $MaxEpisodes) {
             /*
@@ -214,7 +216,7 @@ class ServiceFunctions {
                         'Importing operations for episode ' . sprintf('%03d', $processed) . ': ' . $episodeInfo->getName() . ' (Patient Id: ' .
                         $episodeInfo->getPatientId() . ', Episode Id: ' . $episodeInfo->getEpisodeId() . ')', 1);
                 try {
-                    $this->importIntoPHM($episodeInfo, $kxEpisodesSubscription);
+                    $this->importIntoPHM($episodeInfo, $kxEpisodesSubscription, $ignoredDepartments);
                     $success[] = $episodeInfo;
                     foreach ($episodeOperationRecords as $record) {
                         // Preserve the informat¡on successfully imported so that we can track changes when updated information is received
@@ -230,6 +232,7 @@ class ServiceFunctions {
                     ServiceLogger::getInstance()->error($e->getMessage(), 1);
                 }
                 $processed++;
+                $numOperations += count($episodeInfo->getOperations());
                 foreach ($episodeOperationRecords as $record) {
                     $record->save();
                 }
@@ -240,13 +243,24 @@ class ServiceFunctions {
 
             $progress = round(100 * ($totalExpectedEpisodes ? $processed / $totalExpectedEpisodes : 1), 1);
 
-            $outputMessage = "Processed: $processed ($progress%), Success: " . count($success) . ', Failed: ' . count($importFailed);
+            $outputMessage = "Processed: $processed ($progress%), Success: " . count($success) . ', Failed: ' . count($importFailed) .
+                    '. Total operations processed: ' . $numOperations;
             // Save progress log
             $processHistory->setOutputMessage($outputMessage);
             $processHistory->save();
         }
 
-        $outputMessage = "Processed: $processed ($progress%), Success: " . count($success) . ', Failed: ' . count($importFailed);
+        if (!empty($ignoredDepartments)) {
+            $deptList = implode(', ', array_keys($ignoredDepartments));
+            $totalIgnored = 0;
+            foreach ($ignoredDepartments as $n) {
+                $totalIgnored += $n;
+            }
+            $processHistory->addLog($totalIgnored . ' operations from the following departmens have been ignored: ' . $deptList);
+        }
+
+        $outputMessage = "Episodes processed: $processed ($progress%), Success: " . count($success) . ', Failed: ' . count($importFailed) .
+                '. Total operations processed: ' . $numOperations;
         if (count($success) + count($importFailed) == 0) {
             $outputStatus = ServiceResponse::IDLE;
         } elseif (count($importFailed) > 0) {
@@ -410,8 +424,9 @@ class ServiceFunctions {
      *
      * @param PUMCHEpisode $episodeInfo
      * @param APISubscription $episodeSubscription
+     * @param string[]
      */
-    private function importIntoPHM($episodeInfo, $episodeSubscription) {
+    private function importIntoPHM($episodeInfo, $episodeSubscription, &$ignoredDepartments) {
         $errMsg = '';
         $errCode = null;
 
@@ -485,6 +500,20 @@ class ServiceFunctions {
 
             /* Create or update an ADMISSION in the "DAY SURGERY" Care Plan for each operation */
             foreach ($episodeInfo->getOperations() as $operation) {
+                $deptName = $operation->getDeptName();
+                if (in_array($deptName, $GLOBALS['IGNORE_DEPT_NAMES'])) {
+                    /*
+                     * The department name is in the list of departments that should be ignored (do not create an ADMISSION in the DAY SURGERY care
+                     * plan)
+                     */
+                    if (array_key_exists($deptName, $ignoredDepartments)) {
+                        $ignoredDepartments[$deptName] += 1;
+                    } else {
+                        $ignoredDepartments[$deptName] = 1;
+                    }
+                    continue;
+                }
+
                 if (!array_key_exists($operation->getDeptName(), $GLOBALS['DAY_SURGERY_TEAM_CODES'])) {
                     $msg = 'No TEAM configured for the department code: ' . $operation->getDeptName() . '. Cannot find the subscription for care plan ' .
                             $GLOBALS['DAY_SURGERY_PROGRAM_CODE'];
@@ -519,6 +548,7 @@ class ServiceFunctions {
             $errMsg = 'Unexpected exception: ' . $e->getMessage();
             $errCode = ErrorCodes::UNEXPECTED_ERROR;
         }
+
         if ($errMsg) {
             $errMsg = 'ERROR CREATING/UPDATING ADMISSION FOR PATIENT ' . $episodeInfo->getName() . '(episodeId: ' . $episodeInfo->getEpisodeId() .
                     ', patientId:' . $episodeInfo->getPatientId() . '): ' . $errMsg;

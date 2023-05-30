@@ -1,11 +1,31 @@
 <?php
+session_start();
+
 if ($_SERVER['REQUEST_METHOD'] != 'POST') {
     return;
 }
 
 require_once ("lib/default_conf.php");
-setSystemTimeZone();
 header('Content-type: application/json');
+
+$status = [];
+
+if ($_SESSION['logged_in']) {
+    // Check whether the user has been inactive for a long time
+    $elapsedSinceLastActivity = microtime(true) - $_SESSION['last_activity'];
+    if ($elapsedSinceLastActivity > $GLOBALS['SUPERADMIN_SESSION_EXPIRE']) {
+        $_SESSION['last_activity'] = null;
+        $_SESSION['logged_in'] = false;
+        echo (json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        return;
+    }
+    $_SESSION['last_activity'] = microtime(true);
+} else {
+    echo (json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    return;
+}
+
+setSystemTimeZone();
 
 try {
     Database::connect($GLOBALS['INTEGRATION_DBSERVER'], $GLOBALS['INTEGRATION_DATABASE'], $GLOBALS['INTEGRATION_DBUSER'],
@@ -21,7 +41,6 @@ try {
 $serviceNames = ['import_patients' => 'Import operations in PHM', 'fetch_pumch_records' => 'Fetch operations from PUMCH',
         'review_followup_enrolled' => 'Reject expired enrollments in DAY SURGERY FOLLOWUP'];
 
-$status = [];
 foreach ($serviceNames as $name => $description) {
     $processInfo = ProcessHistory::findLast($name);
     if (!$processInfo) {
