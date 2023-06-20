@@ -1,6 +1,9 @@
 <?php
 
 class APIForm {
+    const STATUS_OPEN = 'OPEN';
+    const STATUS_CLOSED = 'CLOSED';
+    const STATUS_CANCELLED = 'CANCELLED';
     private $id;
     private $formCode;
     private $name;
@@ -137,6 +140,52 @@ class APIForm {
      * METHODS
      * **********************************
      */
+    /**
+     *
+     * @return boolean
+     */
+    public function isClosed() {
+        return $this->status == self::STATUS_CLOSED;
+    }
+
+    /**
+     *
+     * @return boolean
+     */
+    public function isOpen() {
+        return $this->status == self::STATUS_OPEN;
+    }
+
+    /**
+     *
+     * @return boolean
+     */
+    public function isCancelled() {
+        return $this->status == self::STATUS_CANCELLED;
+    }
+
+    /**
+     * Opens a FORM.
+     * The function will do nothing if the FORM is already open
+     */
+    public function open() {
+        if ($this->isOpen()) {
+            return;
+        }
+        $this->api->form_open($this->id);
+    }
+
+    /**
+     * Closes a FORM.
+     * The function will do nothing if the FORM is not open
+     */
+    public function close() {
+        if (!$this->isOpen()) {
+            return;
+        }
+        $this->api->form_close($this->id);
+    }
+
     /**
      *
      * @param APIQuestion $q

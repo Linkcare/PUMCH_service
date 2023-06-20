@@ -953,7 +953,7 @@ class ServiceFunctions {
             }
         }
         if (!$operationTask) {
-            /* We havent found the operationID. Wee need to create a new TASK to store the operation information */
+            /* We havent found the operationID. We need to create a new TASK to store the operation information */
             $operationTask = $admission->insertTask(self::PATIENT_HISTORY_TASK_CODE, $operation->getInRoomDatetime());
             $episodeForms = $operationTask->findForm(self::OPERATION_FORM_CODE);
             $operationForm = empty($episodeForms) ? null : reset($episodeForms);
@@ -1122,6 +1122,11 @@ class ServiceFunctions {
 
         $operationTask->setLocked(true);
         $operationTask->save();
+
+        /* Check whether the operation has been marked as "Cancelled", and if so, cancel the TASK */
+        if ($operation->getFlag() == 'delete' && !$operationTask->isCancelled()) {
+            $operationTask->cancel(true);
+        }
 
         return $operationForm;
     }

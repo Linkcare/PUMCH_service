@@ -1,4 +1,6 @@
 <?php
+$GLOBALS['WSAPI_VERSION'] = "1.1";
+
 require_once ("APIException.php");
 require_once ("LinkcareSoapAPI.php");
 require_once ("APIResponse.php");

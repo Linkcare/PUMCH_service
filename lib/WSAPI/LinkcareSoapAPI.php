@@ -643,6 +643,16 @@ class LinkcareSoapAPI {
      *
      * @param int $taskId
      * @throws APIException
+     */
+    public function task_cancel($taskId) {
+        $params = ['task' => $taskId];
+        $this->invoke('task_cancel', $params);
+    }
+
+    /**
+     *
+     * @param int $taskId
+     * @throws APIException
      * @return APITask
      */
     public function task_get($taskId) {
@@ -930,6 +940,26 @@ class LinkcareSoapAPI {
     /**
      *
      * @param int $formId
+     * @throws APIException
+     */
+    public function form_open($formId) {
+        $params = ['form' => $formId];
+        $this->invoke('form_open', $params);
+    }
+
+    /**
+     *
+     * @param int $formId
+     * @throws APIException
+     */
+    public function form_close($formId) {
+        $params = ['form' => $formId];
+        $this->invoke('form_close', $params);
+    }
+
+    /**
+     *
+     * @param int $formId
      * @param boolean $withQuestions
      * @param boolean $asClosed
      * @throws APIException
@@ -1059,6 +1089,29 @@ class LinkcareSoapAPI {
         $event->toXML($xml, null);
         $params = ["event" => $xml->toString()];
         $this->invoke('event_set', $params);
+    }
+
+    /**
+     * Execute a FORMULA
+     *
+     * @param string $formId
+     * @param string $questionId
+     * @param string $formula
+     * @param boolean $simulation
+     * @throws APIException
+     * @return string
+     */
+    public function formula_exec($formId, $questionId, $formula, $simulation = false) {
+        $value = null;
+        $params = ['form' => $formId, 'question' => $questionId, 'formula' => $formula, 'simulation' => $simulation ? 'true' : 'false'];
+        $resp = $this->invoke('formula_exec', $params);
+        if (!$resp->getErrorCode()) {
+            if ($formulaResult = simplexml_load_string($resp->getResult())) {
+                $value = NullableString($formulaResult->value);
+            }
+        }
+
+        return $value;
     }
 
     /*

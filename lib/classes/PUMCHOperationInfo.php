@@ -65,6 +65,8 @@ class PUMCHOperationInfo {
     /** @var string*/
     private $operationPosition;
     /** @var string*/
+    private $flag;
+    /** @var string*/
     private $name;
     /** @var string*/
     private $sex;
@@ -337,6 +339,14 @@ class PUMCHOperationInfo {
      */
     public function getOperationPosition() {
         return $this->operationPosition;
+    }
+
+    /**
+     *
+     * @return string
+     */
+    public function getFlag() {
+        return $this->flag;
     }
 
     /**
@@ -698,6 +708,14 @@ class PUMCHOperationInfo {
      *
      * @param string $value
      */
+    public function setFlag($value) {
+        $this->assignAndTrackPropertyChange('flag', $value);
+    }
+
+    /**
+     *
+     * @param string $value
+     */
     public function setName($value) {
         $this->assignAndTrackPropertyChange('name', $value);
     }
@@ -849,6 +867,8 @@ class PUMCHOperationInfo {
                 $this->addProcedure(PUMCHProcedure::fromJson($procedure));
             }
         }
+        $this->setFlag($operation->flag);
+
         $this->setName($operation->name);
         $this->setSex($operation->sex);
         $this->setAge($operation->age);

@@ -1,9 +1,11 @@
 <?php
 
 class APITask {
-    const STATUS_NOT_ASSIGNED = 11;
-    const STATUS_NOT_DONE = 12;
-    const STATUS_DONE = 13;
+    const STATUS_NOT_DONE = 'ASSIGNED/NOT DONE';
+    const STATUS_DONE = 'DONE';
+    const STATUS_CANCELLED = 'CANCELLED';
+    const STATUS_PAUSED = 'PAUSED';
+    const STATUS_EXPIRED = 'EXPIRED';
 
     // Private members
     private $id;
@@ -294,6 +296,57 @@ class APITask {
      * METHODS
      * **********************************
      */
+    /**
+     * Changes the status of the TASK to "Cancelled".
+     * The function will do nothing if the TASK is already cancelled
+     */
+    public function cancel() {
+        if ($this->isCancelled()) {
+            return;
+        }
+        $this->api->task_cancel($this->id);
+    }
+
+    /**
+     *
+     * @return boolean
+     */
+    public function isClosed() {
+        return $this->status == self::STATUS_DONE;
+    }
+
+    /**
+     *
+     * @return boolean
+     */
+    public function isOpen() {
+        return $this->status == self::STATUS_NOT_DONE;
+    }
+
+    /**
+     *
+     * @return boolean
+     */
+    public function isCancelled() {
+        return $this->status == self::STATUS_CANCELLED;
+    }
+
+    /**
+     *
+     * @return boolean
+     */
+    public function isExpired() {
+        return $this->status == self::STATUS_EXPIRED;
+    }
+
+    /**
+     *
+     * @return boolean
+     */
+    public function isPaused() {
+        return $this->status == self::STATUS_PAUSED;
+    }
+
     /**
      * Removes all the assignments of the TASK
      */
