@@ -114,6 +114,8 @@ $GLOBALS['DEFAULT_TIMEZONE'] = 'Asia/Shanghai';
 $GLOBALS['LOG_LEVEL'] = 'error';
 /* Directory to store logs in disk. If null, logs will only be generated on stdout */
 $GLOBALS['LOG_DIR'] = null;
+
+$GLOBALS['DISABLE_COMM_CHANNELS'] = ['phone'];
 /*
  * Maximum number of patients that should be imported to the Linkcare platform in one execution. 0 means no limit (continue while there are records to
  * process)
@@ -173,4 +175,4 @@ date_default_timezone_set($GLOBALS['DEFAULT_TIMEZONE']);
 $GLOBALS['PATIENT_IDENTIFIER'] = 'PARTICIPANT_REF';
 $GLOBALS['PROFESSIONAL_IDENTIFIER'] = 'EMPLOYEE_REF';
 
-$GLOBALS['VERSION'] = '1.1';
+$GLOBALS['VERSION'] = '1.2';
