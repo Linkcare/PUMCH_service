@@ -669,6 +669,13 @@ class ServiceFunctions {
             $patient = $this->apiLK->case_insert($contactInfo, $subscription ? $subscription->getId() : null, true);
             $preferences = $patient->getPreferences();
             $preferences->setEditableByCase(false);
+
+            // Disable sending notifications by SMS
+            $notifChannels = array_filter($preferences->getNotificactionChannels(),
+                    function ($ch) {
+                        return !in_array($ch, $GLOBALS['DISABLE_COMM_CHANNELS']);
+                    });
+            $preferences->setNotificationChannels($notifChannels);
             $patient->save();
         }
 
