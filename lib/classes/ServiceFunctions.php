@@ -147,7 +147,6 @@ class ServiceFunctions {
         if ($MaxEpisodes <= 0) {
             $MaxEpisodes = 10000000;
         }
-
         $page = 1;
         $pageSize = $GLOBALS['PATIENT_PAGE_SIZE'];
         $processed = 0;
@@ -605,19 +604,14 @@ class ServiceFunctions {
             throw new ServiceException(ErrorCodes::DATA_MISSING, 'patientId is not informed. It is mandatory to provide a patient Identifier.');
         }
 
-        if ($importInfo->getCrmId()) {
-            // We have the ID of the patient in the AIMedicine CRM. We can use it as the patient reference
-            $caseId = 'AIMED|' . $importInfo->getCrmId();
-        } else {
-            $searchCondition->identifier = new StdClass();
-            $searchCondition->identifier->code = $GLOBALS['PATIENT_IDENTIFIER'];
-            $searchCondition->identifier->value = $importInfo->getPatientId();
-            $searchCondition->identifier->team = $GLOBALS['HOSPITAL_TEAM'];
-            $found = $this->apiLK->case_search(json_encode($searchCondition));
-            $caseId = null;
-            if (!empty($found)) {
-                $caseId = $found[0]->getId();
-            }
+        $searchCondition->identifier = new StdClass();
+        $searchCondition->identifier->code = $GLOBALS['PATIENT_IDENTIFIER'];
+        $searchCondition->identifier->value = $importInfo->getPatientId();
+        $searchCondition->identifier->team = $GLOBALS['HOSPITAL_TEAM'];
+        $found = $this->apiLK->case_search(json_encode($searchCondition));
+        $caseId = null;
+        if (!empty($found)) {
+            $caseId = $found[0]->getId();
         }
 
         $contactInfo = new APIContact();
@@ -645,6 +639,11 @@ class ServiceFunctions {
         $uniqueIdentifier = new APIIdentifier($GLOBALS['PATIENT_IDENTIFIER'], $importInfo->getPatientId());
         $uniqueIdentifier->setTeamId($GLOBALS['HOSPITAL_TEAM']);
         $contactInfo->addIdentifier($uniqueIdentifier);
+
+        if ($importInfo->getCrmId()) {
+            $crmId = new APIIdentifier($GLOBALS['AIMED_CRM_IDENTIFIER'], $importInfo->getCrmId());
+            $contactInfo->addIdentifier($crmId);
+        }
 
         if ($importInfo->getIdCard() && ($identifierName = self::IdentifierNameFromCardType($importInfo->getIdCardType()))) {
             $nationalId = new APIIdentifier($identifierName, $importInfo->getIdCard());
