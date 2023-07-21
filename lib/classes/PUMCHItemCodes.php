@@ -42,6 +42,9 @@ class PUMCHItemCodes {
     const PHONE = 'PHONE';
     const LAST_UPDATE = 'LAST_UPDATE_TIME';
 
+    // ITEM CODES for the ADMISSIONS SETUP Stage of the "Home Monitoring" Care plan
+    const CREATION_MODE = 'CREATION_MODE';
+
     //
     const DAY_SURGERY_ADMISSION = 'DAY_SURGERY_ADMISSION';
 }

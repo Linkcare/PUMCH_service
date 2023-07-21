@@ -758,6 +758,16 @@ class LinkcareSoapAPI {
     }
 
     /**
+     *
+     * @param string $taskId
+     * @throws APIException
+     */
+    function task_delete($taskId) {
+        $params = ['token' => $this->session->getToken(), 'task' => $taskId, 'type' => 'DELETE'];
+        $this->invoke('task_delete', $params);
+    }
+
+    /**
      * Creates a new CASE
      * The value returned is the ID of the new CASE
      *
@@ -935,6 +945,39 @@ class LinkcareSoapAPI {
         }
 
         return array_filter($taskList);
+    }
+
+    /**
+     *
+     * @param int $formId
+     * @throws APIException
+     * @return APIForm
+     */
+    public function form_get($formId) {
+        $form = null;
+        $params = ['form_id' => $formId];
+        $resp = $this->invoke('form_get', $params);
+        if ($xml = simplexml_load_string($resp->getResult())) {
+            $form = APIForm::parseXML($xml);
+        }
+
+        return $form;
+    }
+
+    /**
+     *
+     * @param APIForm $form
+     * @throws APIException
+     * @return APIForm
+     */
+    public function form_update($form) {
+        $params = ['form_id' => $form->getId()];
+        $resp = $this->invoke('form_get', $params);
+        if ($xml = simplexml_load_string($resp->getResult())) {
+            APIForm::parseXML($xml, $form);
+        }
+
+        return $form;
     }
 
     /**

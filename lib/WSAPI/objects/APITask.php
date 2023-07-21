@@ -39,13 +39,18 @@ class APITask {
     /**
      *
      * @param SimpleXMLElement $xmlNode
+     * @param APITask $task (optional) if provided, the data will be stored in this APITask object
      * @return APITask
      */
-    static public function parseXML($xmlNode) {
+    static public function parseXML($xmlNode, $task = null) {
         if (!$xmlNode) {
             return null;
         }
-        $task = new APITask();
+
+        if (!$task) {
+            $task = new APITask();
+        }
+
         $task->id = NullableString($xmlNode->ref);
         if ($xmlNode->code) {
             $task->taskCode = NullableString($xmlNode->code);
@@ -399,6 +404,13 @@ class APITask {
         if ($this->modified) {
             $this->api->task_set($this);
         }
+    }
+
+    /**
+     * Delete the TASK
+     */
+    public function delete() {
+        $this->api->task_delete($this->getId());
     }
 
     /**

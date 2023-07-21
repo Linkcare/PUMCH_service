@@ -16,9 +16,13 @@ class ServiceFunctions {
     private $cachedSubscriptions = [];
     private $failedSubscriptions = [];
 
-    /* Other Constants */
+    /* Codes of the TASK/FORM to store the operation information */
     const PATIENT_HISTORY_TASK_CODE = 'PUMCH_IMPORT';
     const OPERATION_FORM_CODE = 'PUMCH_IMPORT_FORM';
+
+    /* Code of the TASK created for a professional to force the start of the follow up */
+    const FOLLOWUP_START_TASK_CODE = 'FOLLOWUP_START';
+    const COMPLETE_PROFILE_TASK_CODE = 'HMDS_PROGRAM_INTRO';
 
     /**
      *
@@ -513,6 +517,11 @@ class ServiceFunctions {
                     continue;
                 }
 
+                if (!$operation->getInRoomDatetime() || !$operation->getOutRoomDatetime()) {
+                    // The operation has not been performed yet. Do not create an admission in the "Home monitoring" Care plan
+                    continue;
+                }
+
                 if (!array_key_exists($operation->getDeptName(), $GLOBALS['DAY_SURGERY_TEAM_CODES'])) {
                     $msg = 'No TEAM configured for the department code: ' . $operation->getDeptName() . '. Cannot find the subscription for care plan ' .
                             $GLOBALS['DAY_SURGERY_PROGRAM_CODE'];
@@ -523,10 +532,10 @@ class ServiceFunctions {
                 // Find Subscription to create the Admission
                 $daySurgerySubscription = $this->loadSubscription($GLOBALS['DAY_SURGERY_PROGRAM_CODE'], $teamCode);
                 $operationForm = $operationForms[$operation->getOperationId()];
-                if (!$isNewEpisode) {
-                    $daySurgeryAdmission = $this->findDaySurgeryAdmission($operation->getInRoomDatetime(), $operationForm, $patient,
-                            $daySurgerySubscription);
-                }
+
+                $daySurgeryAdmission = $this->findDaySurgeryAdmission($operation->getInRoomDatetime(), $operationForm, $patient,
+                        $daySurgerySubscription);
+
                 if (!$daySurgeryAdmission) {
                     /*
                      * It is necessary to create an associated ADMISSION in the "DAY SURGERY"
@@ -535,6 +544,15 @@ class ServiceFunctions {
                     ServiceLogger::getInstance()->debug('Create new ADMISSION in DAY SURGERY care plan', 2);
                     $daySurgeryAdmission = $this->createDaySurgeryAdmission($patient, $operation, $operationForm, $daySurgerySubscription,
                             $isNewDaySurgeryAdmission);
+                }
+
+                /*
+                 * Finally, if the operation has finished (has InRoomDateTime and OutRoomDateTime) and previously didn't exist or wasn't finished,
+                 * then ensure that the Admission passes to the "Active" stage if it is still in "Enroll" stage
+                 * The way to do it is to close the TASKS that are still open
+                 */
+                if ($operation->finishReported()) {
+                    $this->closeEnrollTasks($daySurgeryAdmission);
                 }
             }
         } catch (ServiceException $se) {
@@ -803,13 +821,13 @@ class ServiceFunctions {
      * Creates a new Admission for a patient in the "PUMCH Day Surgery" PROGRAM
      *
      * @param APICase $case
-     * @param PUMCHOperationInfo $episodeInfo
+     * @param PUMCHOperationInfo $operationInfo
      * @param APIForm $operationForm
      * @param APISubscription $subscription
      * @param boolean &$isNew
      * @return APIAdmission
      */
-    private function createDaySurgeryAdmission($case, $episodeInfo, $operationForm, $subscription, &$isNew) {
+    private function createDaySurgeryAdmission($case, $operationInfo, $operationForm, $subscription, &$isNew) {
         /*
          * First of all check whether it is really necessary to create a new ADMISSION.
          * If any ADMISSION exists with a enroll date posterior to the admission date received from PUMCH, then it is not necessary to create a new
@@ -839,14 +857,20 @@ class ServiceFunctions {
              * situation is strange, but it may mean that we are receiving an update of an old record
              */
             $isActive = !in_array($found->getStatus(), [APIAdmission::STATUS_DISCHARGED, APIAdmission::STATUS_REJECTED]);
-            if ($isActive || $episodeInfo->getoutRoomDatetime() < $found->getEnrolDate()) {
+            if ($isActive || $operationInfo->getOutRoomDatetime() < $found->getEnrolDate()) {
                 $isNew = false;
                 $admission = $found;
             }
         }
 
         if (!$admission) {
-            $admission = $this->apiLK->admission_create($case->getId(), $subscription->getId(), null, null, true);
+            $setupParameters = new stdClass();
+
+            $setupParameters->{PUMCHItemCodes::CREATION_MODE} = 1;
+            $setupParameters->{PUMCHItemCodes::IN_ROOM_DATETIME} = $operationInfo->getInRoomDatetime();
+            $setupParameters->{PUMCHItemCodes::OUT_ROOM_DATETIME} = $operationInfo->getOutRoomDatetime();
+
+            $admission = $this->apiLK->admission_create($case->getId(), $subscription->getId(), null, null, true, $setupParameters);
         }
 
         if ($operationForm && $q = $operationForm->findQuestion(PUMCHItemCodes::DAY_SURGERY_ADMISSION)) {
@@ -915,12 +939,12 @@ class ServiceFunctions {
     }
 
     /**
-     * Updates the information related with a specific episode of the patient.
-     * There exists a TASK with TASK_CODE = XXXXX for each episode.<br>
+     * Creates or updates a TASK with the information abount an operation of the patient.
      * The return value is the APIForm with the information about the episode
      *
      * @param APIAdmission $admission
-     * @param PUMCHOperationInfo $operation
+     * @param PUMCHOperationInfo $operation Creates or updates a TASK with the information abount an operation of the patient.
+     * @throws APIException|ServiceException
      * @return APIForm
      */
     private function storeOperationData($admission, $operation) {
@@ -1018,14 +1042,15 @@ class ServiceFunctions {
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ANESTHESIA_METHOD, $operation->getAnesthesiaMethod());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPERATION_POSITION, $operation->getOperationPosition());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::NAME, $operation->getName());
-        $arrQuestions[] = $this->updateOptionQuestionValue($operationForm, PUMCHItemCodes::SEX, null, $operation->getSex([$this, 'mapSexValue']));
+        $arrQuestions[] = $this->updateOptionQuestionValue($operationForm, PUMCHItemCodes::SEX, $operation->getSex([$this, 'mapSexValueToOptionId']),
+                null);
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::AGE, $operation->getAge());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::BIRTHDAY, $operation->getBirthday());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ID_CARD_TYPE, $operation->getIdCardType());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::ID_CARD, $operation->getIdCard());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::PHONE, $operation->getPhone());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::IN_ROOM_DATETIME, $operation->getInRoomDatetime());
-        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OUT_ROOM_DATETIME, $operation->getoutRoomDatetime());
+        $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OUT_ROOM_DATETIME, $operation->getOutRoomDatetime());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPER_STATUS, $operation->getOperStatus());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::LAST_UPDATE, $operation->getUpdateDateTime());
 
@@ -1138,6 +1163,42 @@ class ServiceFunctions {
     }
 
     /**
+     * Closes the opened TASKS of the ADMISSION if it is in "Enroll" stage
+     * This TASK is in the "ENROLL" Stage because the ADMISSION cannot pass to the "ACTIVE" stage until the operation has finished
+     *
+     * @param APIAdmission $admission
+     * @throws APIException|ServiceException
+     */
+    private function closeEnrollTasks($admission) {
+        if (!in_array($admission->getStatus(), [APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
+            return;
+        }
+
+        foreach ($admission->getTaskList() as $task) {
+            if ($task->getTaskCode() == self::FOLLOWUP_START_TASK_CODE) {
+                $operationDateTask = $task;
+            } elseif ($task->getTaskCode() == self::COMPLETE_PROFILE_TASK_CODE && $task->isOpen()) {
+                /*
+                 * If the TASK for completing the Personal data of the patient is still open and the ADMISSION indicates that all the personal data is
+                 * complete, then we can remove the TASK
+                 */
+                $task->cancel();
+            }
+        }
+
+        if ($operationDateTask) {
+            if (!$operationDateTask->isOpen()) {
+                // Already closed
+                return;
+            }
+
+            foreach ($operationDateTask->getForms() as $f) {
+                $f->close();
+            }
+        }
+    }
+
+    /**
      * Sets the value of a Question in a FORM.
      * Returns the question of the Form that has been modified, or null if it was not found
      *
@@ -1239,6 +1300,21 @@ class ServiceFunctions {
             $value = 'M';
         } elseif ($value) {
             $value = 'F';
+        }
+        return $value;
+    }
+
+    /**
+     * Maps a Sex value to standard value used in Linkcare Platform
+     *
+     * @param string $value
+     * @return number
+     */
+    public function mapSexValueToOptionId($value) {
+        if (in_array($value, ['0', '男', 'm', 'M'])) {
+            $value = 1;
+        } elseif ($value) {
+            $value = 2;
         }
         return $value;
     }

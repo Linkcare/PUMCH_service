@@ -23,13 +23,18 @@ class APIForm {
     /**
      *
      * @param SimpleXMLElement $xmlNode
+     * @param APIForm $admission (optional) if provided, the data will be stored in this APIForm object
      * @return APIForm
      */
-    static public function parseXML($xmlNode) {
+    static public function parseXML($xmlNode, $form = null) {
         if (!$xmlNode) {
             return null;
         }
-        $form = new APIForm();
+
+        if (!$form) {
+            $form = new APIForm();
+        }
+
         $form->id = NullableString($xmlNode->ref);
         if ($xmlNode->code) {
             $form->formCode = NullableString((string) $xmlNode->code);
@@ -118,6 +123,10 @@ class APIForm {
      * @return string
      */
     public function getStatus() {
+        if ($this->status === null) {
+            /* This Form object has been partially loaded, so it is necessary to update its information */
+            $this->api->form_update($this);
+        }
         return $this->status;
     }
 
@@ -145,7 +154,7 @@ class APIForm {
      * @return boolean
      */
     public function isClosed() {
-        return $this->status == self::STATUS_CLOSED;
+        return $this->getStatus() == self::STATUS_CLOSED;
     }
 
     /**
@@ -153,7 +162,7 @@ class APIForm {
      * @return boolean
      */
     public function isOpen() {
-        return $this->status == self::STATUS_OPEN;
+        return $this->getStatus() == self::STATUS_OPEN;
     }
 
     /**
@@ -161,7 +170,7 @@ class APIForm {
      * @return boolean
      */
     public function isCancelled() {
-        return $this->status == self::STATUS_CANCELLED;
+        return $this->getStatus() == self::STATUS_CANCELLED;
     }
 
     /**

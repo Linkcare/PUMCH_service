@@ -417,7 +417,7 @@ class PUMCHOperationInfo {
      *
      * @return string
      */
-    public function getoutRoomDatetime() {
+    public function getOutRoomDatetime() {
         return $this->outRoomDatetime;
     }
 
@@ -881,6 +881,28 @@ class PUMCHOperationInfo {
         $this->setBirthday($operation->birthDay);
         $this->setCreateDateTime($operation->createDatetime ?? $this->getOperatingDatetime());
         $this->setUpdateDateTime($operation->lastUpdateDatetime ?? $this->getCreateDateTime());
+    }
+
+    /*
+     * Returns true if the Operation record indicates that the operation has finished and previously it wasn't finished. This happens when:
+     * The operation has inRoomDatetime and outRoomDatetime, and the information received from previous records meets one of the following conditions:
+     * - There was no previous record (this is the first time that we receive information about the operation)
+     * - The record received previously about this operation didn't have the inRoomDatetime or outRoomDatetime informed
+     */
+    public function finishReported() {
+        // Check changes in inRoomDatetime and outRoomDateTime information
+        if (!isNullOrEmpty($this->inRoomDatetime) && !isNullOrEmpty($this->outRoomDatetime)) {
+            // The operation dates indicate that the operation has finished
+            if (!array_key_exists('inRoomDatetime', $this->changeList) || isNullOrEmpty($this->changeList['inRoomDatetime'])) {
+                // This is the first time that we know that the operation has finished, because previously we hsdn't the inRoomDateTime
+                return true;
+            }
+            if (!array_key_exists('outRoomDatetime', $this->changeList) || isNullOrEmpty($this->changeList['outRoomDatetime'])) {
+                // This is the first time that we know that the operation has finished, because previously we hsdn't the outRoomDateTime
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
