@@ -23,6 +23,9 @@ class ServiceFunctions {
     /* Code of the TASK created for a professional to force the start of the follow up */
     const FOLLOWUP_START_TASK_CODE = 'FOLLOWUP_START';
     const COMPLETE_PROFILE_TASK_CODE = 'HMDS_PROGRAM_INTRO';
+    /* "ADMISSION SETUP" TASK and FORM CODES */
+    const ADMISSION_SETUP_TASK_CODE = 'ADM_SETUP';
+    const ADMISSION_SETUP_FORM_CODE = 'ADM_SETUP_FORM';
 
     /**
      *
@@ -433,6 +436,10 @@ class ServiceFunctions {
         $errMsg = '';
         $errCode = null;
 
+        $traceMsg = 'IMPORTING OPERATIONS OF PATIENT ' . $episodeInfo->getName() . '(episodeId: ' . $episodeInfo->getEpisodeId() . ', patientId:' .
+                $episodeInfo->getPatientId() . ')';
+        ServiceLogger::getInstance()->trace($traceMsg, 2);
+
         // Create or update the Patient in Linkcare platform
         try {
             $patient = $this->createPatient($episodeInfo, $episodeSubscription);
@@ -522,9 +529,13 @@ class ServiceFunctions {
                     continue;
                 }
 
+                $traceMsg = 'The operation ' . $operation->getOperationId() . ' has inRoomDatetime and outRoomDatetime. Patient: ' .
+                        $episodeInfo->getName() . '(episodeId: ' . $episodeInfo->getEpisodeId() . ', patientId:' . $episodeInfo->getPatientId() . ')';
+                ServiceLogger::getInstance()->trace($traceMsg, 3);
+
                 if (!array_key_exists($operation->getDeptName(), $GLOBALS['DAY_SURGERY_TEAM_CODES'])) {
-                    $msg = 'No TEAM configured for the department code: ' . $operation->getDeptName() . '. Cannot find the subscription for care plan ' .
-                            $GLOBALS['DAY_SURGERY_PROGRAM_CODE'];
+                    $msg = 'No TEAM configured for the department with name: "' . $operation->getDeptName() .
+                            '". Cannot find the subscription for care plan ' . $GLOBALS['DAY_SURGERY_PROGRAM_CODE'];
                     ServiceLogger::getInstance()->debug($msg, 2);
                     throw new ServiceException(ErrorCodes::CONFIG_ERROR, $msg);
                 }
@@ -541,19 +552,26 @@ class ServiceFunctions {
                      * It is necessary to create an associated ADMISSION in the "DAY SURGERY"
                      * PROGRAM
                      */
-                    ServiceLogger::getInstance()->debug('Create new ADMISSION in DAY SURGERY care plan', 2);
+                    $traceMsg = 'It is necessary to create a new Admission in the Home Monitoring care plan for operation ' .
+                            $operation->getOperationId() . ' has inRoomDatetime and outRoomDatetime. Patient: ' . $episodeInfo->getName() .
+                            '(episodeId: ' . $episodeInfo->getEpisodeId() . ', patientId:' . $episodeInfo->getPatientId() . ')';
+                    ServiceLogger::getInstance()->trace($traceMsg, 3);
                     $daySurgeryAdmission = $this->createDaySurgeryAdmission($patient, $operation, $operationForm, $daySurgerySubscription,
                             $isNewDaySurgeryAdmission);
+                } else {
+                    $traceMsg = 'The Admission in the Home Monitoring care plan already exists (Admission Id: ' . $daySurgeryAdmission->getId() .
+                            ') for operation ' . $operation->getOperationId() . ' has inRoomDatetime and outRoomDatetime. Patient: ' .
+                            $episodeInfo->getName() . '(episodeId: ' . $episodeInfo->getEpisodeId() . ', patientId:' . $episodeInfo->getPatientId() .
+                            ')';
+                    ServiceLogger::getInstance()->trace($traceMsg, 3);
                 }
 
                 /*
-                 * Finally, if the operation has finished (has InRoomDateTime and OutRoomDateTime) and previously didn't exist or wasn't finished,
-                 * then ensure that the Admission passes to the "Active" stage if it is still in "Enroll" stage
+                 * Finally, if the operation has finished (has InRoomDateTime and OutRoomDateTime) then ensure that the Admission passes to the
+                 * "Active" stage if it is still in "Enroll" stage
                  * The way to do it is to close the TASKS that are still open
                  */
-                if ($operation->finishReported()) {
-                    $this->closeEnrollTasks($daySurgeryAdmission);
-                }
+                $this->closeEnrollTasks($daySurgeryAdmission, $operation);
             }
         } catch (ServiceException $se) {
             $errMsg = 'Import service generated an exception: ' . $se->getMessage();
@@ -888,17 +906,17 @@ class ServiceFunctions {
      * Finds the ADMISSION created in the Day Surgery PROGRAM that is related to a PUMCH clinical episode.
      * The information about the related ADMISSION is stored in an ITEM of the FORM that holds all the information about the clinical episode
      *
-     * @param APIForm $episodeInfoForm
+     * @param APIForm $operationForm
      * @param APICase $case
      * @param APISubscription $subscription
      * @return APIAdmission
      */
-    private function findDaySurgeryAdmission($operationDate, $episodeInfoForm, $case, $subscription) {
-        if (!$episodeInfoForm) {
+    private function findDaySurgeryAdmission($operationDate, $operationForm, $case, $subscription) {
+        if (!$operationForm) {
             return null;
         }
 
-        $q = $episodeInfoForm->findQuestion(PUMCHItemCodes::DAY_SURGERY_ADMISSION);
+        $q = $operationForm->findQuestion(PUMCHItemCodes::DAY_SURGERY_ADMISSION);
         $daySurgeryAdmissionId = $q ? $q->getAnswer() : null;
 
         if ($daySurgeryAdmissionId) {
@@ -931,6 +949,14 @@ class ServiceFunctions {
         /** @var APIAdmission $found */
         foreach ($existingAdmissions as $admission) {
             if ($admission->getEnrolDate() > $operationDate) {
+                /* We have found the Admission that corresponds to the operation, but its ID was not stored, so we will store it now */
+                if ($q) {
+                    /*
+                     * Update the ID of the Admission created in the FORM where the rest of the information about the episode is stored.
+                     */
+                    $q->setAnswer($admission->getId());
+                    $this->apiLK->form_set_answer($operationForm->getId(), $q->getId(), $admission->getId());
+                }
                 return $admission;
             }
         }
@@ -1167,11 +1193,30 @@ class ServiceFunctions {
      * This TASK is in the "ENROLL" Stage because the ADMISSION cannot pass to the "ACTIVE" stage until the operation has finished
      *
      * @param APIAdmission $admission
+     * @param PUMCHOperationInfo $operationInfo
      * @throws APIException|ServiceException
      */
-    private function closeEnrollTasks($admission) {
+    private function closeEnrollTasks($admission, $operationInfo) {
         if (!in_array($admission->getStatus(), [APIAdmission::STATUS_ENROLLED, APIAdmission::STATUS_INCOMPLETE])) {
             return;
+        }
+
+        // Update the inRoomDatetime and outRoomDatetime in the
+        $filter = new TaskFilter();
+        $filter->setTaskCodes(self::ADMISSION_SETUP_TASK_CODE);
+        $admSetupTaskList = $admission->getTaskList(1, 0, $filter);
+        $admSetupTask = empty($admSetupTaskList) ? null : $admSetupTaskList[0];
+        $admSetupForm = null;
+        if ($admSetupTask) {
+            $forms = $admSetupTask->findForm(self::ADMISSION_SETUP_FORM_CODE);
+            /**@var APIForm $admSetupForm */
+            $admSetupForm = empty($forms) ? null : reset($forms);
+        }
+        if ($admSetupForm) {
+            $arrQuestions = [];
+            $arrQuestions[] = $this->updateTextQuestionValue($admSetupForm, PUMCHItemCodes::IN_ROOM_DATETIME, $operationInfo->getInRoomDatetime());
+            $arrQuestions[] = $this->updateTextQuestionValue($admSetupForm, PUMCHItemCodes::OUT_ROOM_DATETIME, $operationInfo->getOutRoomDatetime());
+            $this->apiLK->form_set_all_answers($admSetupForm->getId(), $arrQuestions, true);
         }
 
         foreach ($admission->getTaskList() as $task) {

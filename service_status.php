@@ -30,8 +30,6 @@ setSystemTimeZone();
 try {
     Database::connect($GLOBALS['INTEGRATION_DBSERVER'], $GLOBALS['INTEGRATION_DATABASE'], $GLOBALS['INTEGRATION_DBUSER'],
             $GLOBALS['INTEGRATION_DBPASSWORD']);
-    // apiConnect($session);
-    apiConnect(null, $GLOBALS['SERVICE_USER'], $GLOBALS['SERVICE_PASSWORD'], 47, $GLOBALS['SERVICE_TEAM'], true);
 } catch (APIException $e) {
     exit(1);
 } catch (Exception $e) {

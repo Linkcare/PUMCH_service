@@ -422,10 +422,10 @@ class RecordPool {
     }
 
     /**
-     * Records marked as "Errors" will be reseted so that they can be processed again
+     * Records marked as "Errors" will be marked to "Retry" so that they can be processed again
      */
     static public function resetErrors() {
-        $sql = 'UPDATE RECORD_POOL SET CHANGED=1 WHERE CHANGED=2';
+        $sql = 'UPDATE RECORD_POOL SET CHANGED=3 WHERE CHANGED=2';
         Database::getInstance()->ExecuteQuery($sql);
     }
 
@@ -447,7 +447,7 @@ class RecordPool {
         $arrVariables[':endOffset'] = $endOffset;
         $sql = 'SELECT * FROM RECORD_POOL rp2 WHERE (ID_PATIENT,ID_EPISODE) IN (
                 	SELECT ID_PATIENT,ID_EPISODE FROM (
-                		SELECT rp.ID_PATIENT,rp.ID_EPISODE,ROW_NUMBER() OVER(ORDER BY ID_PATIENT,ID_EPISODE) RN FROM RECORD_POOL rp WHERE CHANGED=1 GROUP BY rp.ID_PATIENT,rp.ID_EPISODE
+                		SELECT rp.ID_PATIENT,rp.ID_EPISODE,ROW_NUMBER() OVER(ORDER BY ID_PATIENT,ID_EPISODE) RN FROM RECORD_POOL rp WHERE CHANGED IN (1,3) GROUP BY rp.ID_PATIENT,rp.ID_EPISODE
                 	) WHERE RN >=:startOffset AND RN<:endOffset
                 ) ORDER BY CHANGED,ID_PATIENT,ID_EPISODE,OPERATION_DATE';
         $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
@@ -467,7 +467,7 @@ class RecordPool {
      */
     static public function countTotalChanged() {
         $total = 0;
-        $sql = 'SELECT COUNT(DISTINCT ID_EPISODE) AS TOTAL FROM RECORD_POOL WHERE CHANGED=1';
+        $sql = 'SELECT COUNT(DISTINCT ID_EPISODE) AS TOTAL FROM RECORD_POOL WHERE CHANGED IN (1,3)';
         $rst = Database::getInstance()->ExecuteQuery($sql);
         if ($rst->Next()) {
             $total = $rst->GetField('TOTAL');

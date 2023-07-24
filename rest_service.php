@@ -17,8 +17,16 @@ header('Content-type: application/json');
 $action = $_GET['function'];
 
 $serviceResponse = new ServiceResponse(ServiceResponse::IDLE, 'Request received for action: ' . $action);
-
 $logger = ServiceLogger::init($GLOBALS['LOG_LEVEL'], $GLOBALS['LOG_DIR']);
+
+if (!in_array($action, ['import_patients', 'fetch_pumch_records', 'review_day_surgery_enrolled', 'fetch_and_import'])) {
+    $serviceResponse->setCode(ServiceResponse::ERROR);
+    $serviceResponse->setMessage('Invalid action requested: ' . $action);
+    $logger->error($serviceResponse->getMessage());
+    echo $serviceResponse->toString();
+    exit(1);
+}
+
 $connectionSuccessful = false;
 try {
     Database::connect($GLOBALS['INTEGRATION_DBSERVER'], $GLOBALS['INTEGRATION_DATABASE'], $GLOBALS['INTEGRATION_DBUSER'],
