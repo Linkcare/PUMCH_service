@@ -54,6 +54,13 @@ $GLOBALS['DAY_SURGERY_TEAM_CODES'] = [];
 $GLOBALS['IGNORE_DEPT_NAMES'] = [];
 
 /*
+ * When an operation is received without a department name, it is not possible to create and ADMISSION in the "Home Monitoring" care plan.
+ * When the service is executes, it generates a report indicating how many operations do not have a department name and have not been updated in the
+ * last days.
+ * The EMPTY_DEPT_DAY_LIMIT parameter indicates how many days should be included in the report
+ */
+$GLOBALS['EMPTY_DEPT_DAY_LIMIT'] = 3;
+/*
  * Day interval to reject ADMISSIONS that have status 'enrolled' in the "DAY SURGERY FOLLOW UP" PROGRAM but discharged in the "PUMCH EPISODES"
  * PROGRAM.
  * If the discharge ocurred before the configured period, the enrolled ADMISSION will be rejected
@@ -176,4 +183,4 @@ $GLOBALS['PATIENT_IDENTIFIER'] = 'PARTICIPANT_REF';
 $GLOBALS['PROFESSIONAL_IDENTIFIER'] = 'EMPLOYEE_REF';
 $GLOBALS['AIMED_CRM_IDENTIFIER'] = 'AIMED_REF';
 
-$GLOBALS['VERSION'] = '1.5';
+$GLOBALS['VERSION'] = '1.6';

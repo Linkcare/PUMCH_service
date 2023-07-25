@@ -1,6 +1,12 @@
 <?php
 
 class RecordPool {
+    const STATUS_NOT_CHANGED = 0;
+    const STATUS_CHANGED = 1;
+    const STATUS_ERROR = 2;
+    const STATUS_RETRY = 3;
+    const STATUS_EMPTY_DEPT = 4;
+
     /** @var int */
     private $id;
     /** @var string */
@@ -425,8 +431,10 @@ class RecordPool {
      * Records marked as "Errors" will be marked to "Retry" so that they can be processed again
      */
     static public function resetErrors() {
-        $sql = 'UPDATE RECORD_POOL SET CHANGED=3 WHERE CHANGED=2';
-        Database::getInstance()->ExecuteQuery($sql);
+        $arrVariables[':newStatus'] = self::STATUS_RETRY;
+        $arrVariables[':errorStatus'] = self::STATUS_ERROR;
+        $sql = 'UPDATE RECORD_POOL SET CHANGED=:newStatus WHERE CHANGED=:errorStatus';
+        Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
     }
 
     /**
@@ -445,11 +453,12 @@ class RecordPool {
 
         $arrVariables[':startOffset'] = $startOffset;
         $arrVariables[':endOffset'] = $endOffset;
-        $sql = 'SELECT * FROM RECORD_POOL rp2 WHERE (ID_PATIENT,ID_EPISODE) IN (
+        $statusToLoad = implode(',', [self::STATUS_CHANGED, self::STATUS_RETRY]);
+        $sql = "SELECT * FROM RECORD_POOL rp2 WHERE (ID_PATIENT,ID_EPISODE) IN (
                 	SELECT ID_PATIENT,ID_EPISODE FROM (
-                		SELECT rp.ID_PATIENT,rp.ID_EPISODE,ROW_NUMBER() OVER(ORDER BY ID_PATIENT,ID_EPISODE) RN FROM RECORD_POOL rp WHERE CHANGED IN (1,3) GROUP BY rp.ID_PATIENT,rp.ID_EPISODE
+                		SELECT rp.ID_PATIENT,rp.ID_EPISODE,ROW_NUMBER() OVER(ORDER BY ID_PATIENT,ID_EPISODE) RN FROM RECORD_POOL rp WHERE CHANGED IN ($statusToLoad) GROUP BY rp.ID_PATIENT,rp.ID_EPISODE
                 	) WHERE RN >=:startOffset AND RN<:endOffset
-                ) ORDER BY CHANGED,ID_PATIENT,ID_EPISODE,OPERATION_DATE';
+                ) ORDER BY CHANGED,ID_PATIENT,ID_EPISODE,OPERATION_DATE";
         $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
         while ($rst->Next()) {
             $patientId = $rst->GetField('ID_PATIENT');
@@ -467,8 +476,26 @@ class RecordPool {
      */
     static public function countTotalChanged() {
         $total = 0;
-        $sql = 'SELECT COUNT(DISTINCT ID_EPISODE) AS TOTAL FROM RECORD_POOL WHERE CHANGED IN (1,3)';
+        $statusToLoad = implode(',', [self::STATUS_CHANGED, self::STATUS_RETRY]);
+        $sql = "SELECT COUNT(DISTINCT ID_EPISODE) AS TOTAL FROM RECORD_POOL WHERE CHANGED IN ($statusToLoad)";
         $rst = Database::getInstance()->ExecuteQuery($sql);
+        if ($rst->Next()) {
+            $total = $rst->GetField('TOTAL');
+        }
+        return $total;
+    }
+
+    /**
+     * Returns the total number of operations that have an empty department name and have been imported in the last $sinceDays days
+     *
+     * @return number
+     */
+    static public function countDepartmentEmpty($sinceDays) {
+        $total = 0;
+        $arrVariables[':emptyDeptStatus'] = self::STATUS_EMPTY_DEPT;
+        $arrVariables[':sinceDate'] = date('Y-m-d', strtotime("-$sinceDays days", strtotime(currentDate())));
+        $sql = 'SELECT COUNT(*) AS TOTAL FROM RECORD_POOL WHERE CHANGED =:emptyDeptStatus AND LAST_UPDATE >= :sinceDate';
+        $rst = Database::getInstance()->ExecuteBindQuery($sql, $arrVariables);
         if ($rst->Next()) {
             $total = $rst->GetField('TOTAL');
         }

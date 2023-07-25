@@ -117,6 +117,7 @@ th.duration, td.duration {
 th.message, td.message {
     max-width: 380px;
     min-width: 380px;
+    white-space: pre;
 }
 
 .buttons.logout{

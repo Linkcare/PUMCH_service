@@ -87,8 +87,8 @@ class ServiceFunctions {
             foreach ($patientsToImport as $patientInfo) {
                 /** @var PUMCHOperationInfo $patientInfo */
                 ServiceLogger::getInstance()->debug(
-                        'Processing patient ' . sprintf('%03d', $processed) . ': ' . $patientInfo->getName() . ' (Patient Id: ' .
-                        $patientInfo->getPatientId() . ', Episode: ' . $patientInfo->getEpisodeId() . ')', 1);
+                        'Processing patient ' . sprintf('%03d', $processed) . ': (Patient Id: ' . $patientInfo->getPatientId() . ', Episode: ' .
+                        $patientInfo->getEpisodeId() . ')', 1);
                 try {
                     $ret = $this->processFetchedRecord($patientInfo);
                     switch ($ret) {
@@ -206,7 +206,7 @@ class ServiceFunctions {
                 }, $episodeOperationRecords);
 
                 if (!empty($prevPUMCHData)) {
-                    // This clinical episode was been processed before, so first we load the previous information
+                    // This clinical episode has been processed before, so first we load the previous information
                     $episodeInfo = PUMCHEpisode::fromJson($prevPUMCHData);
                     /*
                      * Now update the information that we already had about the episode with the new information received. This allows to keep track
@@ -219,17 +219,38 @@ class ServiceFunctions {
                 }
 
                 ServiceLogger::getInstance()->debug(
-                        'Importing operations for episode ' . sprintf('%03d', $processed) . ': ' . $episodeInfo->getName() . ' (Patient Id: ' .
-                        $episodeInfo->getPatientId() . ', Episode Id: ' . $episodeInfo->getEpisodeId() . ')', 1);
+                        'Importing operations for episode ' . sprintf('%03d', $processed) . ': (Patient Id: ' . $episodeInfo->getPatientId() .
+                        ', Episode Id: ' . $episodeInfo->getEpisodeId() . ')', 1);
                 try {
                     $this->importIntoPHM($episodeInfo, $kxEpisodesSubscription, $ignoredDepartments);
                     $success[] = $episodeInfo;
-                    foreach ($episodeOperationRecords as $record) {
-                        // Preserve the informat¡on successfully imported so that we can track changes when updated information is received
-                        $record->setPrevRecordContent($record->getRecordContent());
-                        $record->setChanged(0);
+                    foreach ($episodeInfo->getOperations() as $operation) {
+                        // Update the status of the process
+                        $record = null;
+                        // Find the record that corresponds to the operation and update its status
+                        foreach ($episodeOperationRecords as $record) {
+                            if ($record->getOperationId() != $operation->getOperationId()) {
+                                continue;
+                            }
+                            // Preserve the informat¡on successfully imported so that we can track changes when updated information is received
+                            $record->setPrevRecordContent($record->getRecordContent());
+                            /*
+                             * Set a different status to the records that have an empty department name, because they have not been used to create
+                             * Admission in the "Home Monitoring" care plan, and we want to show a report about the number of operations without
+                             * department name
+                             */
+                            if (isNullOrEmpty($operation->getDeptName())) {
+                                $record->setChanged(RecordPool::STATUS_EMPTY_DEPT);
+                            } else {
+                                $record->setChanged(RecordPool::STATUS_NOT_CHANGED);
+                            }
+                        }
                     }
                 } catch (Exception $e) {
+                    /*
+                     * Modify the status of the record to indicate that the process ended with errors.
+                     * in the next execution the records marked as "Errors" will be retried
+                     */
                     $importFailed[] = $episodeInfo;
                     foreach ($episodeOperationRecords as $record) {
                         $record->setChanged(2);
@@ -265,8 +286,14 @@ class ServiceFunctions {
             $processHistory->addLog($totalIgnored . ' operations from the following departmens have been ignored: ' . $deptList);
         }
 
-        $outputMessage = "Episodes processed: $processed ($progress%), Success: " . count($success) . ', Failed: ' . count($importFailed) .
-                '. Total operations processed: ' . $numOperations;
+        $outputMessage = "Episodes processed: $processed ($progress%), Success: " . count($success) . ', Failed: ' . count($importFailed) . "\n";
+        $outputMessage .= "Total operations processed: $numOperations";
+
+        $nDaysLimit = $GLOBALS['EMPTY_DEPT_DAY_LIMIT'];
+        $operationsWithoutDepartment = RecordPool::countDepartmentEmpty($nDaysLimit);
+        if ($operationsWithoutDepartment) {
+            $outputMessage .= "\nOperations received in the last $nDaysLimit days with an empty department name: $operationsWithoutDepartment";
+        }
         if (count($success) + count($importFailed) == 0) {
             $outputStatus = ServiceResponse::IDLE;
         } elseif (count($importFailed) > 0) {
@@ -436,8 +463,7 @@ class ServiceFunctions {
         $errMsg = '';
         $errCode = null;
 
-        $traceMsg = 'IMPORTING OPERATIONS OF PATIENT ' . $episodeInfo->getName() . '(episodeId: ' . $episodeInfo->getEpisodeId() . ', patientId:' .
-                $episodeInfo->getPatientId() . ')';
+        $traceMsg = 'IMPORTING OPERATIONS OF PATIENT (episodeId: ' . $episodeInfo->getEpisodeId() . ', patientId:' . $episodeInfo->getPatientId() . ')';
         ServiceLogger::getInstance()->trace($traceMsg, 2);
 
         // Create or update the Patient in Linkcare platform
@@ -454,8 +480,8 @@ class ServiceFunctions {
             $errCode = ErrorCodes::UNEXPECTED_ERROR;
         }
         if ($errMsg) {
-            $errMsg = 'ERROR CREATING PATIENT ' . $episodeInfo->getName() . '(episodeId: ' . $episodeInfo->getEpisodeId() . ', patientId:' .
-                    $episodeInfo->getPatientId() . '): ' . $errMsg;
+            $errMsg = 'ERROR CREATING PATIENT (episodeId: ' . $episodeInfo->getEpisodeId() . ', patientId:' . $episodeInfo->getPatientId() . '): ' .
+                    $errMsg;
             throw new ServiceException($errCode, $errMsg);
         }
 
@@ -465,9 +491,7 @@ class ServiceFunctions {
             if (!$admission) {
                 ServiceLogger::getInstance()->debug('Creating new Admission for patient in PUMCH Admissions care plan', 2);
                 $admission = $this->createEpisodeAdmission($patient, $episodeInfo, $episodeSubscription);
-                $isNewEpisode = true;
             } else {
-                $isNewEpisode = false;
                 ServiceLogger::getInstance()->debug('Using existing Admission for patient in PUMCH Admissions care plan', 2);
             }
 
@@ -508,7 +532,7 @@ class ServiceFunctions {
             $isNewDaySurgeryAdmission = false;
             $daySurgeryAdmission = null;
 
-            /* Create or update an ADMISSION in the "DAY SURGERY" Care Plan for each operation */
+            /* Create or update an ADMISSION in the "DAY SURGERY" Care Plan for the most recent operation */
             foreach ($episodeInfo->getOperations() as $operation) {
                 $deptName = $operation->getDeptName();
                 if (in_array($deptName, $GLOBALS['IGNORE_DEPT_NAMES'])) {
@@ -524,18 +548,26 @@ class ServiceFunctions {
                     continue;
                 }
 
+                if (isNullOrEmpty($deptName)) {
+                    /*
+                     * No department assigned to the operation. It is not possible to create an Admission in the "Home monitoring" care plan because
+                     * we don't know which is the Team owner of the Susbcription
+                     */
+                    continue;
+                }
+
                 if (!$operation->getInRoomDatetime() || !$operation->getOutRoomDatetime()) {
                     // The operation has not been performed yet. Do not create an admission in the "Home monitoring" Care plan
                     continue;
                 }
 
-                $traceMsg = 'The operation ' . $operation->getOperationId() . ' has inRoomDatetime and outRoomDatetime. Patient: ' .
-                        $episodeInfo->getName() . '(episodeId: ' . $episodeInfo->getEpisodeId() . ', patientId:' . $episodeInfo->getPatientId() . ')';
+                $traceMsg = 'The operation ' . $operation->getOperationId() . ' has inRoomDatetime and outRoomDatetime. Patient: (episodeId: ' .
+                        $episodeInfo->getEpisodeId() . ', patientId:' . $episodeInfo->getPatientId() . ')';
                 ServiceLogger::getInstance()->trace($traceMsg, 3);
 
-                if (!array_key_exists($operation->getDeptName(), $GLOBALS['DAY_SURGERY_TEAM_CODES'])) {
-                    $msg = 'No TEAM configured for the department with name: "' . $operation->getDeptName() .
-                            '". Cannot find the subscription for care plan ' . $GLOBALS['DAY_SURGERY_PROGRAM_CODE'];
+                if (!array_key_exists($deptName, $GLOBALS['DAY_SURGERY_TEAM_CODES'])) {
+                    $msg = 'No TEAM configured for the department with name: "' . $deptName . '". Cannot find the subscription for care plan ' .
+                            $GLOBALS['DAY_SURGERY_PROGRAM_CODE'];
                     ServiceLogger::getInstance()->debug($msg, 2);
                     throw new ServiceException(ErrorCodes::CONFIG_ERROR, $msg);
                 }
@@ -553,16 +585,15 @@ class ServiceFunctions {
                      * PROGRAM
                      */
                     $traceMsg = 'It is necessary to create a new Admission in the Home Monitoring care plan for operation ' .
-                            $operation->getOperationId() . ' has inRoomDatetime and outRoomDatetime. Patient: ' . $episodeInfo->getName() .
-                            '(episodeId: ' . $episodeInfo->getEpisodeId() . ', patientId:' . $episodeInfo->getPatientId() . ')';
+                            $operation->getOperationId() . ' has inRoomDatetime and outRoomDatetime. Patient: (episodeId: ' .
+                            $episodeInfo->getEpisodeId() . ', patientId:' . $episodeInfo->getPatientId() . ')';
                     ServiceLogger::getInstance()->trace($traceMsg, 3);
                     $daySurgeryAdmission = $this->createDaySurgeryAdmission($patient, $operation, $operationForm, $daySurgerySubscription,
                             $isNewDaySurgeryAdmission);
                 } else {
                     $traceMsg = 'The Admission in the Home Monitoring care plan already exists (Admission Id: ' . $daySurgeryAdmission->getId() .
-                            ') for operation ' . $operation->getOperationId() . ' has inRoomDatetime and outRoomDatetime. Patient: ' .
-                            $episodeInfo->getName() . '(episodeId: ' . $episodeInfo->getEpisodeId() . ', patientId:' . $episodeInfo->getPatientId() .
-                            ')';
+                            ') for operation ' . $operation->getOperationId() . ' has inRoomDatetime and outRoomDatetime. Patient: (episodeId: ' .
+                            $episodeInfo->getEpisodeId() . ', patientId:' . $episodeInfo->getPatientId() . ')';
                     ServiceLogger::getInstance()->trace($traceMsg, 3);
                 }
 
@@ -585,8 +616,8 @@ class ServiceFunctions {
         }
 
         if ($errMsg) {
-            $errMsg = 'ERROR CREATING/UPDATING ADMISSION FOR PATIENT ' . $episodeInfo->getName() . '(episodeId: ' . $episodeInfo->getEpisodeId() .
-                    ', patientId:' . $episodeInfo->getPatientId() . '): ' . $errMsg;
+            $errMsg = 'ERROR CREATING/UPDATING ADMISSION FOR PATIENT (episodeId: ' . $episodeInfo->getEpisodeId() . ', patientId:' .
+                    $episodeInfo->getPatientId() . '): ' . $errMsg;
             throw new ServiceException($errCode, $errMsg);
         }
     }
