@@ -10,6 +10,7 @@ class PUMCHOperationInfo {
      */
     private $trackChanges = true;
     private $changeList = [];
+    private $proposedProceduresChanged;
     private $proceduresChanged;
 
     /** @var string*/
@@ -26,6 +27,8 @@ class PUMCHOperationInfo {
     private $deptWard;
     /** @var string*/
     private $bedNo;
+    /** @var PUMCHProcedure[] */
+    private $proposedProcedures = [];
     /** @var PUMCHProcedure[] */
     private $procedures = [];
     /** @var string*/
@@ -169,12 +172,21 @@ class PUMCHOperationInfo {
     }
 
     /**
-     * List of procedures of the operation
+     * List of operation procedures applied to the patient
      *
      * @return PUMCHProcedure[]
      */
     public function getProcedures() {
         return $this->procedures;
+    }
+
+    /**
+     * List of operation procedures proposed initially for the patient
+     *
+     * @return PUMCHProcedure[]
+     */
+    public function getProposedProcedures() {
+        return $this->proposedProcedures;
     }
 
     /**
@@ -549,6 +561,24 @@ class PUMCHOperationInfo {
     }
 
     /**
+     * Add a new proposed procedure (only proposed but not really applied to the patient) name to the operation
+     *
+     * @param PUMCHProcedure $procedure
+     */
+    public function addProposedProcedure($procedure) {
+        foreach ($this->proposedProcedures as $p) {
+            if ($p->getOperationCode() == $procedure->getOperationCode()) {
+                // The operation is already in the list
+                return;
+            }
+        }
+        if ($this->trackChanges) {
+            $this->proposedProceduresChanged = true;
+        }
+        $this->proposedProcedures[] = $procedure;
+    }
+
+    /**
      * Operating room number
      *
      * @param string $value
@@ -821,6 +851,15 @@ class PUMCHOperationInfo {
      */
 
     /**
+     * Returns true if the operation has been marked as "deleted"
+     *
+     * @return boolean
+     */
+    public function isDeleted() {
+        return $this->getFlag() == 'delete';
+    }
+
+    /**
      * Updates a PUMCHOperationInfo object from the information received from the PUMCH hospital
      *
      * @param stdClass $operation
@@ -862,7 +901,12 @@ class PUMCHOperationInfo {
         $this->setAnesthesiaDoctorCode4($operation->anesthesiaDoctorNO4);
         $this->setAnesthesiaMethod($operation->anesthesiaMethod);
         $this->setOperationPosition($operation->operationPosition);
-        if (isset($operation->operationList)) {
+        if (isset($operation->proOperationList) && is_array($operation->proOperationList)) {
+            foreach ($operation->proOperationList as $procedure) {
+                $this->addProcedure(PUMCHProcedure::fromJson($procedure), false);
+            }
+        }
+        if (isset($operation->operationList) && is_array($operation->operationList)) {
             foreach ($operation->operationList as $procedure) {
                 $this->addProcedure(PUMCHProcedure::fromJson($procedure));
             }
@@ -911,7 +955,7 @@ class PUMCHOperationInfo {
      * @return boolean
      */
     public function hasChanges() {
-        if (count($this->changeList) > 0 || $this->proceduresChanged) {
+        if (count($this->changeList) > 0 || $this->proceduresChanged || $this->proposedProceduresChanged) {
             return true;
         }
         return false;

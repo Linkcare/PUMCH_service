@@ -158,11 +158,43 @@ class PUMCHEpisode {
 
     /**
      * Returns the discharge date.
-     * It corresponds to the end datetime of the last operation
+     * It corresponds to the end datetime of the last operation.<br>
+     * The function returns the discharge date, or null if the episode is not discharged
+     *
+     * @return string
      */
     public function getDischargeTime() {
         $lastDate = null;
         foreach ($this->operations as $op) {
+            if (!$op->getOutRoomDatetime()) {
+                /*
+                 * There is at least one operation without outRoomDateTime, so the surgery has not ended yet.
+                 * To have a discharge datetime all the operations of the episode should have been finished
+                 */
+                return null;
+            }
+            if ($lastDate === null || $lastDate < $op->getOutRoomDatetime()) {
+                $lastDate = $op->getOutRoomDatetime();
+            }
+        }
+
+        return $lastDate;
+    }
+
+    /**
+     * When all the operations of an episode have been marked as deleted, the episode can be considered as "Rejected".
+     * The rejection date will be considered the date when the last operation was scheduled.<br>
+     * The function returns the rejection date, or null if the episode is not rejected
+     *
+     * @return string
+     */
+    public function getRejectionTime() {
+        $lastDate = null;
+        foreach ($this->operations as $op) {
+            if (!$op->isDeleted()) {
+                /* There is at least one operation that is not deleted, so the epoisde cannot be considered as "Rejected" */
+                return null;
+            }
             if ($lastDate === null || $lastDate < $op->getOperatingDatetime()) {
                 $lastDate = $op->getOperatingDatetime();
             }

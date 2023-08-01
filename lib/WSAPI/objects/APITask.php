@@ -310,6 +310,7 @@ class APITask {
             return;
         }
         $this->api->task_cancel($this->id);
+        $this->status = self::STATUS_CANCELLED;
     }
 
     /**

@@ -377,7 +377,7 @@ class ServiceFunctions {
                 $dayDiff = (strtotime(currentDate($GLOBALS['DEFAULT_TIMEZONE'])) - strtotime($lastDischarge)) / 86400;
                 if ($dayDiff > $GLOBALS['REJECT_ENROLLED_AFTER_DAYS']) {
                     try {
-                        $this->apiLK->admission_reject($adm->getId());
+                        $adm->reject();
                         $numRejected++;
                     } catch (Exception $e) {
                         $rejectFailed++;
@@ -506,14 +506,22 @@ class ServiceFunctions {
             }
 
             $admissionModified = false;
-            if ($episodeInfo->getDischargeTime()) {
-                // Discharge the Admission if necessary
-                if ($admission->getStatus() != APIAdmission::STATUS_DISCHARGED) {
-                    $admission->discharge(null, $episodeInfo->getDischargeTime());
-                } elseif ($admission->getStatus() == APIAdmission::STATUS_DISCHARGED &&
-                        $admission->getDischargeDate() != $episodeInfo->getDischargeTime()) {
+            if ($rejectionDateTime = $episodeInfo->getRejectionTime()) {
+                // All the operations of the episode have been canceled. We can reject the Admission
+                if ($admission->getStatus() != APIAdmission::STATUS_REJECTED) {
+                    $admission->reject(null, $rejectionDateTime);
+                } elseif ($admission->getStatus() == APIAdmission::STATUS_REJECTED && $admission->getRejectedDate() != $rejectionDateTime) {
                     // The ADMISSION was discharged, but the date has changed
-                    $admission->setDischargeDate($episodeInfo->getDischargeTime());
+                    $admission->setRejectedDate($rejectionDateTime);
+                    $admissionModified = true;
+                }
+            } elseif ($dischargeDateTime = $episodeInfo->getDischargeTime()) {
+                // All the operations of the episode have finished. We can discharge the Admission
+                if ($admission->getStatus() != APIAdmission::STATUS_DISCHARGED) {
+                    $admission->discharge(null, $dischargeDateTime);
+                } elseif ($admission->getStatus() == APIAdmission::STATUS_DISCHARGED && $admission->getDischargeDate() != $dischargeDateTime) {
+                    // The ADMISSION was discharged, but the date has changed
+                    $admission->setDischargeDate($dischargeDateTime);
                     $admissionModified = true;
                 }
             }
@@ -1111,7 +1119,22 @@ class ServiceFunctions {
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::OPER_STATUS, $operation->getOperStatus());
         $arrQuestions[] = $this->updateTextQuestionValue($operationForm, PUMCHItemCodes::LAST_UPDATE, $operation->getUpdateDateTime());
 
-        // Procedure information stored as a table (1 row)
+        // Proposed procedures information stored as a table
+        $ix = 1;
+        $procedures = $operation->getProposedProcedures();
+        if (!empty($procedures) && ($arrayHeader = $operationForm->findQuestion(PUMCHItemCodes::PROPOSED_PROCEDURE_TABLE)) &&
+                $arrayHeader->getType() == APIQuestion::TYPE_ARRAY) {
+            foreach ($procedures as $p) {
+                $arrQuestions[] = $this->updateArrayTextQuestionValue($operationForm, $arrayHeader->getId(), $ix,
+                        PUMCHItemCodes::PROPOSED_OPERATION_CODE, $p->getOperationCode());
+                $arrQuestions[] = $this->updateArrayTextQuestionValue($operationForm, $arrayHeader->getId(), $ix,
+                        PUMCHItemCodes::PROPOSED_OPERATION_NAME, $p->getOperationName());
+
+                $ix++;
+            }
+        }
+
+        // Procedures information stored as a table
         $ix = 1;
         $procedures = $operation->getProcedures();
         if (!empty($procedures) && ($arrayHeader = $operationForm->findQuestion(PUMCHItemCodes::PROCEDURE_TABLE)) &&
@@ -1212,7 +1235,7 @@ class ServiceFunctions {
         $operationTask->save();
 
         /* Check whether the operation has been marked as "Cancelled", and if so, cancel the TASK */
-        if ($operation->getFlag() == 'delete' && !$operationTask->isCancelled()) {
+        if ($operation->isDeleted() && !$operationTask->isCancelled()) {
             $operationTask->cancel(true);
         }
 

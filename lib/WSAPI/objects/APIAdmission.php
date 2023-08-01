@@ -397,6 +397,15 @@ class APIAdmission {
     }
 
     /**
+     *
+     * @param string $type
+     * @param string $date
+     */
+    public function reject($type = null, $date = null) {
+        $this->api->admission_reject($this->id, $type, $date, $this);
+    }
+
+    /**
      */
     public function save() {
         $this->api->admission_set($this);
