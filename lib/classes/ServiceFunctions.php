@@ -1047,9 +1047,10 @@ class ServiceFunctions {
                 break;
             }
         }
+        $taskDate = $operation->getInRoomDatetime() ?? $operation->getOperatingDatetime();
         if (!$operationTask) {
             /* We havent found the operationID. We need to create a new TASK to store the operation information */
-            $operationTask = $admission->insertTask(self::PATIENT_HISTORY_TASK_CODE, $operation->getInRoomDatetime());
+            $operationTask = $admission->insertTask(self::PATIENT_HISTORY_TASK_CODE, $taskDate);
             $episodeForms = $operationTask->findForm(self::OPERATION_FORM_CODE);
             $operationForm = empty($episodeForms) ? null : reset($episodeForms);
         }
@@ -1223,8 +1224,8 @@ class ServiceFunctions {
             }
         }
 
-        if ($operation->getInRoomDatetime()) {
-            $dateParts = explode(' ', $operation->getInRoomDatetime());
+        if ($taskDate) {
+            $dateParts = explode(' ', $taskDate);
             $date = $dateParts[0];
             $time = $dateParts[1];
             $operationTask->setDate($date);
