@@ -903,7 +903,7 @@ class PUMCHOperationInfo {
         $this->setOperationPosition($operation->operationPosition);
         if (isset($operation->proOperationList) && is_array($operation->proOperationList)) {
             foreach ($operation->proOperationList as $procedure) {
-                $this->addProcedure(PUMCHProcedure::fromJson($procedure), false);
+                $this->addProposedProcedure(PUMCHProcedure::fromJson($procedure), false);
             }
         }
         if (isset($operation->operationList) && is_array($operation->operationList)) {
