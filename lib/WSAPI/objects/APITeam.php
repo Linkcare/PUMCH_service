@@ -33,7 +33,7 @@ class APITeam {
             $team->code = NullableString($xmlNode->team_code);
         }
         $team->name = NullableString($xmlNode->name);
-        $team->type = NullableString($xmlNode->unit);
+        $team->type = NullableString($xmlNode->type);
         return $team;
     }
 
@@ -138,6 +138,6 @@ class APITeam {
         $xml->createChildNode($parentNode, "code", $this->getCode());
         $xml->createChildNode($parentNode, "team_code", $this->getCode());
         $xml->createChildNode($parentNode, "name", $this->getName());
-        $xml->createChildNode($parentNode, "unit", $this->getType());
+        $xml->createChildNode($parentNode, "type", $this->getType());
     }
 }

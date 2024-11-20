@@ -34,13 +34,17 @@ class APIContact {
             return null;
         }
         $contact = new APIContact();
-        $contact->id = (string) $xmlNode->ref;
+        $contact->id = trim($xmlNode->ref);
         $contact->userName = NullableString($xmlNode->username);
         $contact->editable = textToBool((string) $xmlNode->editable);
         if ($xmlNode->data) {
-            $contact->bdate = NullableString($xmlNode->data->bdate);
-            $contact->age = NullableString($xmlNode->data->age);
-            $contact->gender = NullableString($xmlNode->data->gender);
+            if ($xmlNode->data->bdate) {
+                $contact->bdate = NullableString($xmlNode->data->bdate->bdate);
+                $contact->age = NullableString($xmlNode->data->bdate->age);
+            }
+            if ($xmlNode->data->gender) {
+                $contact->gender = NullableString($xmlNode->data->gender->gender);
+            }
             if ($xmlNode->data->nationality) {
                 $contact->nationCode = NullableString($xmlNode->data->nationality->ref);
                 $contact->nation = NullableString($xmlNode->data->nationality->name);

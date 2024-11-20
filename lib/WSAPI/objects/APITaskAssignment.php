@@ -28,25 +28,13 @@ class APITaskAssignment {
         }
         $assignment = new APITaskAssignment();
         if ($xmlNode->team) {
-            if ($xmlNode->team->ref) {
-                $assignment->teamId = NullableString($xmlNode->team->ref);
-            } else {
-                $assignment->teamId = NullableString($xmlNode->team->id);
-            }
+            $assignment->teamId = NullableString($xmlNode->team->ref);
         }
         if ($xmlNode->role) {
-            if ($xmlNode->role->ref) {
-                $assignment->roleId = NullableString($xmlNode->role->ref);
-            } else {
-                $assignment->roleId = NullableString($xmlNode->role->id);
-            }
+            $assignment->roleId = NullableString($xmlNode->role->ref);
         }
         if ($xmlNode->user) {
-            if ($xmlNode->user->ref) {
-                $assignment->userId = NullableString($xmlNode->user->ref);
-            } else {
-                $assignment->userId = NullableString($xmlNode->user->id);
-            }
+            $assignment->userId = NullableString($xmlNode->user->ref);
         }
         return $assignment;
     }
@@ -128,15 +116,12 @@ class APITaskAssignment {
         }
 
         $node = $xml->createChildNode($parentNode, "team");
-        $xml->createChildNode($node, "id", $this->getTeamId());
         $xml->createChildNode($node, "ref", $this->getTeamId());
 
         $node = $xml->createChildNode($parentNode, "role");
-        $xml->createChildNode($node, "id", $this->getRoleId());
         $xml->createChildNode($node, "ref", $this->getRoleId());
 
         $node = $xml->createChildNode($parentNode, "user");
-        $xml->createChildNode($node, "id", $this->getUserId());
         $xml->createChildNode($node, "ref", $this->getUserId());
 
         return $parentNode;
